@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, KeyboardEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,38 +20,38 @@ const popularRoutes: Route[] = [
     from: "Darjeeling",
     to: "Mirik",
     duration: "1.5 hours",
-    fare: "₹150"
+    fare: "Rs 1,150",
   },
   {
     from: "Siliguri",
-    to: "Darjeeling", 
+    to: "Darjeeling",
     duration: "3 hours",
-    fare: "₹300"
+    fare: "Rs 1,300",
   },
   {
     from: "Kurseong",
     to: "Darjeeling",
-    duration: "1 hour", 
-    fare: "₹100"
+    duration: "1 hour",
+    fare: "Rs 1,100",
   },
   {
     from: "Kalimpong",
     to: "Darjeeling",
     duration: "2 hours",
-    fare: "₹200"
+    fare: "Rs 1,200",
   },
   {
     from: "Darjeeling",
     to: "Siliguri",
     duration: "3 hours",
-    fare: "₹300"
+    fare: "Rs 1,300",
   },
   {
     from: "Mirik",
-    to: "Darjeeling", 
+    to: "Darjeeling",
     duration: "1.5 hours",
-    fare: "₹150"
-  }
+    fare: "Rs 1,150",
+  },
 ];
 
 export const RouteSelector = ({ onRouteSelect }: RouteSelectorProps) => {
@@ -61,29 +61,43 @@ export const RouteSelector = ({ onRouteSelect }: RouteSelectorProps) => {
     setSelectedRoute(route);
   };
 
+  const handleRouteKeyPress = (event: KeyboardEvent<HTMLDivElement>, route: Route) => {
+    if (event.key === "Enter" || event.key === " " || event.key === "Space" || event.key === "Spacebar") {
+      event.preventDefault();
+      setSelectedRoute(route);
+    }
+  };
+
   const handleContinue = () => {
     if (selectedRoute) {
       onRouteSelect(selectedRoute);
     }
   };
 
+  const isSelected = (route: Route) =>
+    selectedRoute?.from === route.from && selectedRoute?.to === route.to;
+
   return (
     <div className="max-w-4xl mx-auto">
       <div className="text-center mb-8">
         <h2 className="text-3xl font-bold mb-4">Select Your Route</h2>
-        <p className="text-muted-foreground">Choose from our popular routes or search for a specific destination</p>
+        <p className="text-muted-foreground">
+          Choose from our most popular routes or search for a specific destination.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
         {popularRoutes.map((route, index) => (
-          <Card 
-            key={index}
-            className={`cursor-pointer transition-all hover:shadow-md ${
-              selectedRoute?.from === route.from && selectedRoute?.to === route.to
-                ? "border-primary ring-2 ring-primary/20" 
-                : ""
+          <Card
+            key={`${route.from}-${route.to}-${index}`}
+            className={`cursor-pointer transition-all hover:shadow-md focus-within:ring-2 focus-within:ring-primary/40 ${
+              isSelected(route) ? "border-primary ring-2 ring-primary/20" : ""
             }`}
             onClick={() => handleRouteClick(route)}
+            role="button"
+            tabIndex={0}
+            aria-pressed={isSelected(route)}
+            onKeyDown={(event) => handleRouteKeyPress(event, route)}
           >
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
@@ -95,7 +109,7 @@ export const RouteSelector = ({ onRouteSelect }: RouteSelectorProps) => {
                 </div>
                 <Badge variant="secondary">{route.fare}</Badge>
               </div>
-              
+
               <div className="flex items-center text-sm text-muted-foreground">
                 <Clock className="h-4 w-4 mr-1" />
                 {route.duration}

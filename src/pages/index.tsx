@@ -154,36 +154,34 @@ const Index = () => {
             <div className="space-y-4">
               <h3 className="font-semibold text-lg">Darjeeling Taxi</h3>
               <p className="text-sm text-muted-foreground">
-                Connecting you with shared taxis across the beautiful hills of Darjeeling. 
+                Connecting you with shared taxis across the beautiful hills of Darjeeling.
                 Safe, reliable, and community-driven transport.
               </p>
             </div>
-            
             <div className="space-y-4">
               <h4 className="font-semibold">Popular Routes</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>Darjeeling ↔ Mirik</li>
-                <li>Siliguri ↔ Darjeeling</li>
-                <li>Kurseong ↔ Darjeeling</li>
-                <li>Kalimpong ↔ Darjeeling</li>
+                <li>Darjeeling - Mirik</li>
+                <li>Siliguri - Darjeeling</li>
+                <li>Kurseong - Darjeeling</li>
+                <li>Kalimpong - Darjeeling</li>
               </ul>
             </div>
-            
             <div className="space-y-4">
               <h4 className="font-semibold">Contact</h4>
               <div className="space-y-2 text-sm text-muted-foreground">
-                <p>📞 +91 98765 43210</p>
-                <p>📧 hello@darjeeling-taxi.com</p>
-                <p>📍 Chowk Bazaar, Darjeeling</p>
+                <p>Phone: +91 98765 43210</p>
+                <p>Email: hello@darjeeling-taxi.com</p>
+                <p>Office: Chowk Bazaar, Darjeeling</p>
               </div>
             </div>
           </div>
-          
           <div className="border-t mt-8 pt-8 text-center text-sm text-muted-foreground">
             <p>&copy; 2024 Darjeeling Taxi. Connecting communities across the hills.</p>
           </div>
         </div>
       </footer>
+
     </div>
   );
 };
