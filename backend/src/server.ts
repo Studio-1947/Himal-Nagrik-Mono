@@ -2,14 +2,14 @@
 
 import { createApp } from './app';
 import { env } from './config/env';
-import { verifyDatabaseConnection, closeDatabasePool } from './config/database';
+import { ensureDatabaseConnection, closeDatabasePool } from './config/database';
 
 const app = createApp();
 const server = createServer(app);
 
 const start = async (): Promise<void> => {
   try {
-    await verifyDatabaseConnection();
+    await ensureDatabaseConnection();
   } catch (error) {
     console.error('Failed to connect to the database');
     console.error(error);

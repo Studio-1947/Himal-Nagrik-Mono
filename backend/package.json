@@ -27,6 +27,7 @@
     "@types/morgan": "^1.9.10",
     "@types/node": "^24.5.2",
     "@types/pg": "^8.15.5",
+    "@vercel/node": "^5.3.23",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.9.2"
   }

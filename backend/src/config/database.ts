@@ -9,7 +9,7 @@ const connectionOptions = {
 
 export const pool = new Pool(connectionOptions);
 
-export const verifyDatabaseConnection = async (): Promise<void> => {
+const verifyConnection = async (): Promise<void> => {
   const client = await pool.connect();
 
   try {
@@ -21,6 +21,28 @@ export const verifyDatabaseConnection = async (): Promise<void> => {
   } finally {
     client.release();
   }
+};
+
+let verifyPromise: Promise<void> | null = null;
+let verified = false;
+
+export const ensureDatabaseConnection = async (): Promise<void> => {
+  if (verified) {
+    return;
+  }
+
+  if (!verifyPromise) {
+    verifyPromise = verifyConnection()
+      .then(() => {
+        verified = true;
+      })
+      .catch((error) => {
+        verifyPromise = null;
+        throw error;
+      });
+  }
+
+  await verifyPromise;
 };
 
 export const closeDatabasePool = async (): Promise<void> => {
