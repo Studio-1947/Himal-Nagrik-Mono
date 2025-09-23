@@ -19,10 +19,22 @@ interface Route {
   fare: string;
 }
 
+export interface BookingData {
+  bookingId: string;
+  passenger: {
+    name: string;
+    phone: string;
+  };
+  taxi: Taxi;
+  route: Route;
+  bookingTime: string;
+  status: "confirmed" | "pending" | "cancelled";
+}
+
 interface BookingConfirmationProps {
   taxi: Taxi;
   route: Route;
-  onConfirmBooking: (bookingData: any) => void;
+  onConfirmBooking: (bookingData: BookingData) => void;
 }
 
 export const BookingConfirmation = ({ taxi, route, onConfirmBooking }: BookingConfirmationProps) => {
@@ -37,7 +49,7 @@ export const BookingConfirmation = ({ taxi, route, onConfirmBooking }: BookingCo
     
     // Simulate booking process
     setTimeout(() => {
-      const bookingData = {
+      const bookingData: BookingData = {
         bookingId: `BK${Date.now()}`,
         passenger: { name: passengerName, phone: passengerPhone },
         taxi,

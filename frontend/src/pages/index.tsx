@@ -1,9 +1,12 @@
-import { useState } from "react";
+﻿import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { RouteSelector } from "@/components/RouteSelector";
 import { TaxiAvailability } from "@/components/TaxiAvailability";
 import { BookingConfirmation } from "@/components/BookingConfirmation";
+import type { BookingData } from "@/components/BookingConfirmation";
 import { BookingSuccess } from "@/components/BookingSuccess";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/use-auth";
 // import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Car, Users, Star, ArrowLeft } from "lucide-react";
@@ -31,10 +34,12 @@ interface Taxi {
 }
 
 const Index = () => {
+  const { isAuthenticated, role, profile } = useAuth();
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState<Step>("route");
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
   const [selectedTaxi, setSelectedTaxi] = useState<Taxi | null>(null);
-  const [bookingData, setBookingData] = useState<any>(null);
+  const [bookingData, setBookingData] = useState<BookingData | null>(null);
 
   const handleRouteSelect = (route: Route) => {
     setSelectedRoute(route);
@@ -46,7 +51,7 @@ const Index = () => {
     setCurrentStep("booking");
   };
 
-  const handleBookingConfirm = (data: any) => {
+  const handleBookingConfirm = (data: BookingData) => {
     setBookingData(data);
     setCurrentStep("success");
   };
@@ -57,6 +62,17 @@ const Index = () => {
     setSelectedTaxi(null);
     setBookingData(null);
   };
+
+  const goToDashboard = () => {
+    if (!isAuthenticated) {
+      navigate("/login");
+      return;
+    }
+    navigate(role === "driver" ? "/driver/profile" : "/rider/profile");
+  };
+
+  const goToDriverLogin = () => navigate("/driver/login");
+  const goToRiderLogin = () => navigate("/login");
 
   const goBack = () => {
     switch (currentStep) {
@@ -74,6 +90,44 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <header className="container mx-auto flex items-center justify-between px-4 py-6 text-white">
+        <div className="space-y-1">
+          <span className="text-xs uppercase tracking-[0.35em] text-white/60">Himal Nagrik</span>
+          <p className="text-lg font-semibold">Shared journeys of Darjeeling</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {isAuthenticated ? (
+            <>
+              <span className="hidden text-sm text-white/70 sm:inline">
+                Hi, {profile?.name.split(" ")[0] ?? "traveller"}
+              </span>
+              <Button
+                variant="outline"
+                className="border-white/20 bg-white/10 text-white hover:bg-white/20"
+                onClick={goToDashboard}
+              >
+                My dashboard
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="ghost"
+                className="text-white hover:bg-white/10"
+                onClick={goToDriverLogin}
+              >
+                Driver login
+              </Button>
+              <Button
+                className="bg-gradient-to-r from-sky-500 via-emerald-500 to-emerald-400 text-white shadow-emerald-500/30 hover:opacity-90"
+                onClick={goToRiderLogin}
+              >
+                Rider login
+              </Button>
+            </>
+          )}
+        </div>
+      </header>
       {/* Hero Section */}
       <div className="relative h-64 md:h-80 overflow-hidden">
         <img 
@@ -187,3 +241,12 @@ const Index = () => {
 };
 
 export default Index;
+
+
+
+
+
+
+
+
+
