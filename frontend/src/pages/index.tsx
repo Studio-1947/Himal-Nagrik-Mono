@@ -89,10 +89,10 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-black">
       <header className="container mx-auto flex items-center justify-between px-4 py-6 text-white">
-        <div className="space-y-1">
-          <span className="text-xs uppercase tracking-[0.35em] text-white/60">Himal Nagrik</span>
+        <div className="space-y-1 text-black">
+          <span className="text-xs uppercase tracking-[0.35em] text-black">Himal Nagrik</span>
           <p className="text-lg font-semibold">Shared journeys of Darjeeling</p>
         </div>
         <div className="flex items-center gap-3">
@@ -113,7 +113,7 @@ const Index = () => {
             <>
               <Button
                 variant="ghost"
-                className="text-white hover:bg-white/10"
+                className="text-black hover:bg-white/10"
                 onClick={goToDriverLogin}
               >
                 Driver login
@@ -133,27 +133,27 @@ const Index = () => {
         <img 
           src={heroTaxiImage} 
           alt="Taxi in Darjeeling mountains" 
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover filter grayscale brightness-50 contrast-125"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-black/30" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-black/40" />
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center text-white space-y-4">
-            <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
+            <h1 className="text-4xl md:text-6xl font-bold tracking-tight drop-shadow-lg">
               Darjeeling Taxi
             </h1>
-            <p className="text-lg md:text-xl text-white/90 max-w-2xl mx-auto px-4">
+            <p className="text-lg md:text-xl text-white/90 max-w-2xl mx-auto px-4 drop-shadow-md">
               Book shared taxis across the beautiful hills of Darjeeling
             </p>
             <div className="flex items-center justify-center gap-4 text-sm">
-              <Badge variant="secondary" className="bg-white/10 text-white border-white/20">
+              <Badge variant="secondary" className="bg-black/30 text-white border-white/30 backdrop-blur-sm">
                 <MapPin className="h-3 w-3 mr-1" />
                 15+ Routes
               </Badge>
-              <Badge variant="secondary" className="bg-white/10 text-white border-white/20">
+              <Badge variant="secondary" className="bg-black/30 text-white border-white/30 backdrop-blur-sm">
                 <Car className="h-3 w-3 mr-1" />
                 50+ Taxis
               </Badge>
-              <Badge variant="secondary" className="bg-white/10 text-white border-white/20">
+              <Badge variant="secondary" className="bg-black/30 text-white border-white/30 backdrop-blur-sm">
                 <Users className="h-3 w-3 mr-1" />
                 1000+ Passengers
               </Badge>
