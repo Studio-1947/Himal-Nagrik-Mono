@@ -6,11 +6,12 @@ import { SignupForm } from "@/components/auth/SignupForm";
 import { Button } from "@/components/ui/button";
 import type { AuthSession } from "@/lib/auth-service";
 
-const riderHighlights = [
+const passengerHighlights = [
   {
     icon: MapPin,
     title: "Trusted hill routes",
-    description: "Browse verified shared jeeps and reserve seats before the rush.",
+    description:
+      "Browse verified shared jeeps and reserve seats before the rush.",
   },
   {
     icon: CalendarClock,
@@ -20,35 +21,42 @@ const riderHighlights = [
   {
     icon: Users,
     title: "Local community",
-    description: "Ride with drivers and co-travellers who know the terrain inside out.",
+    description:
+      "Ride with drivers and co-travellers who know the terrain inside out.",
   },
 ];
 
-const RiderSignupPage = () => {
+const PassengerSignupPage = () => {
   const navigate = useNavigate();
 
   const handleSuccess = (session: AuthSession) => {
-    const fallback = session.profile.role === "driver" ? "/driver/profile" : "/rider/profile";
+    const fallback =
+      session.profile.role === "driver"
+        ? "/driver/profile"
+        : "/passenger/profile";
     navigate(fallback, { replace: true });
   };
 
   return (
     <AuthLayout
-      eyebrow="Rider onboarding"
+      eyebrow="Passenger onboarding"
       title="Create your Himal Nagrik account"
       subtitle="Plan reliable shared journeys across Darjeeling, Kalimpong, and Siliguri with status alerts and trusted drivers."
-      supportCta={{ label: "Rider help", href: "mailto:hello@himal.app" }}
+      supportCta={{ label: "Passenger help", href: "mailto:hello@himal.app" }}
     >
       <div className="space-y-8">
-        <SignupForm role="rider" onSuccess={handleSuccess} />
+        <SignupForm role="passenger" onSuccess={handleSuccess} />
 
         <div className="border-t border-white/10 pt-6">
           <p className="text-sm font-medium uppercase tracking-[0.35em] text-white/40">
-            Why riders choose Himal Nagrik
+            Why passengers choose Himal Nagrik
           </p>
           <div className="mt-4 space-y-4">
-            {riderHighlights.map(({ icon: Icon, title, description }) => (
-              <div key={title} className="flex items-start gap-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+            {passengerHighlights.map(({ icon: Icon, title, description }) => (
+              <div
+                key={title}
+                className="flex items-start gap-4 rounded-2xl border border-white/10 bg-white/5 p-4"
+              >
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400/15 text-emerald-200">
                   <Icon className="h-5 w-5" />
                 </div>
@@ -70,7 +78,7 @@ const RiderSignupPage = () => {
             className="border-emerald-300/40 bg-transparent text-emerald-100 hover:bg-emerald-400/10"
             onClick={() => navigate("/login")}
           >
-            Rider sign-in
+            Passenger sign-in
           </Button>
         </div>
       </div>
@@ -78,5 +86,4 @@ const RiderSignupPage = () => {
   );
 };
 
-export default RiderSignupPage;
-
+export default PassengerSignupPage;

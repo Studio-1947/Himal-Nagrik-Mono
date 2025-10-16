@@ -16,7 +16,7 @@ import {
   type DriverProfileUpdate,
   type LoginPayload,
   type RegisterPayload,
-  type RiderProfileUpdate,
+  type PassengerProfileUpdate,
 } from "@/lib/auth-service";
 
 const STORAGE_KEY = "himal-nagrik-auth-session";
@@ -43,7 +43,7 @@ export interface AuthContextValue {
   logout: () => Promise<void>;
   refreshProfile: () => Promise<AuthProfile | undefined>;
   updateProfile: (
-    updates: RiderProfileUpdate | DriverProfileUpdate
+    updates: PassengerProfileUpdate | DriverProfileUpdate
   ) => Promise<UpdateProfileResult>;
 }
 
@@ -78,9 +78,11 @@ const persistSession = (session: AuthSession | null) => {
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [session, setSession] = useState<AuthSession | null>(() => readStoredSession());
-  const [status, setStatus] = useState<AuthStatus>(
-    () => (session ? "authenticated" : "unauthenticated")
+  const [session, setSession] = useState<AuthSession | null>(() =>
+    readStoredSession()
+  );
+  const [status, setStatus] = useState<AuthStatus>(() =>
+    session ? "authenticated" : "unauthenticated"
   );
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -90,41 +92,51 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setStatus(session ? "authenticated" : "unauthenticated");
   }, [session]);
 
-  const login = useCallback(async (payload: LoginPayload): Promise<LoginResult> => {
-    setIsPending(true);
-    setError(null);
-    try {
-      const nextSession = await authService.login(payload);
-      setSession(nextSession);
-      return { session: nextSession };
-    } catch (caughtError) {
-      const message =
-        caughtError instanceof Error ? caughtError.message : "Unable to log in";
-      setError(message);
-      setStatus("unauthenticated");
-      throw caughtError;
-    } finally {
-      setIsPending(false);
-    }
-  }, []);
+  const login = useCallback(
+    async (payload: LoginPayload): Promise<LoginResult> => {
+      setIsPending(true);
+      setError(null);
+      try {
+        const nextSession = await authService.login(payload);
+        setSession(nextSession);
+        return { session: nextSession };
+      } catch (caughtError) {
+        const message =
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Unable to log in";
+        setError(message);
+        setStatus("unauthenticated");
+        throw caughtError;
+      } finally {
+        setIsPending(false);
+      }
+    },
+    []
+  );
 
-  const register = useCallback(async (payload: RegisterPayload): Promise<LoginResult> => {
-    setIsPending(true);
-    setError(null);
-    try {
-      const nextSession = await authService.register(payload);
-      setSession(nextSession);
-      return { session: nextSession };
-    } catch (caughtError) {
-      const message =
-        caughtError instanceof Error ? caughtError.message : "Unable to sign up";
-      setError(message);
-      setStatus("unauthenticated");
-      throw caughtError;
-    } finally {
-      setIsPending(false);
-    }
-  }, []);
+  const register = useCallback(
+    async (payload: RegisterPayload): Promise<LoginResult> => {
+      setIsPending(true);
+      setError(null);
+      try {
+        const nextSession = await authService.register(payload);
+        setSession(nextSession);
+        return { session: nextSession };
+      } catch (caughtError) {
+        const message =
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Unable to sign up";
+        setError(message);
+        setStatus("unauthenticated");
+        throw caughtError;
+      } finally {
+        setIsPending(false);
+      }
+    },
+    []
+  );
 
   const logout = useCallback(async (): Promise<void> => {
     setIsPending(true);
@@ -137,7 +149,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [session]);
 
-  const refreshProfile = useCallback(async (): Promise<AuthProfile | undefined> => {
+  const refreshProfile = useCallback(async (): Promise<
+    AuthProfile | undefined
+  > => {
     if (!session) {
       return undefined;
     }
@@ -149,7 +163,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return profile;
     } catch (caughtError) {
       const message =
-        caughtError instanceof Error ? caughtError.message : "Unable to refresh profile";
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Unable to refresh profile";
       setError(message);
       return undefined;
     } finally {
@@ -159,7 +175,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const updateProfile = useCallback(
     async (
-      updates: RiderProfileUpdate | DriverProfileUpdate
+      updates: PassengerProfileUpdate | DriverProfileUpdate
     ): Promise<UpdateProfileResult> => {
       if (!session) {
         throw new Error("User is not authenticated");
@@ -172,7 +188,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return { profile };
       } catch (caughtError) {
         const message =
-          caughtError instanceof Error ? caughtError.message : "Unable to update profile";
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Unable to update profile";
         setError(message);
         throw caughtError;
       } finally {
@@ -196,7 +214,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       refreshProfile,
       updateProfile,
     }),
-    [status, session, isPending, error, login, register, logout, refreshProfile, updateProfile]
+    [
+      status,
+      session,
+      isPending,
+      error,
+      login,
+      register,
+      logout,
+      refreshProfile,
+      updateProfile,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -209,8 +237,3 @@ export const useAuthContext = () => {
   }
   return context;
 };
-
-
-
-
-

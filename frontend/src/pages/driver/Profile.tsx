@@ -28,7 +28,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -42,27 +48,45 @@ const driverSettingsSchema = z.object({
   location: optionalMediumString,
   bio: optionalShortString,
   licenseNumber: optionalMediumString,
-  vehicleManufacturer: z.string().min(2, { message: "Add vehicle manufacturer" }),
+  vehicleManufacturer: z
+    .string()
+    .min(2, { message: "Add vehicle manufacturer" }),
   vehicleModel: z.string().min(1, { message: "Add vehicle model" }),
-  vehicleRegistrationNumber: z.string().min(4, { message: "Add registration number" }),
-  vehicleCapacity: z.coerce.number({ invalid_type_error: "Enter a valid seat count" }).min(4, {
-    message: "Capacity must be at least 4",
-  }),
+  vehicleRegistrationNumber: z
+    .string()
+    .min(4, { message: "Add registration number" }),
+  vehicleCapacity: z.coerce
+    .number({ invalid_type_error: "Enter a valid seat count" })
+    .min(4, {
+      message: "Capacity must be at least 4",
+    }),
   vehicleColor: optionalMediumString,
-  statsTotalTrips: z.coerce.number({ invalid_type_error: "Enter a number" }).min(0, {
-    message: "Trips cannot be negative",
-  }),
-  statsRating: z.coerce.number({ invalid_type_error: "Enter a number" }).min(0, {
-    message: "Rating cannot be negative",
-  }).max(5, { message: "Rating must be 5 or below" }),
-  statsYearsExperience: z.coerce.number({ invalid_type_error: "Enter a number" }).min(0, {
-    message: "Experience cannot be negative",
-  }),
-  statsCancellationRate: z.coerce.number({ invalid_type_error: "Enter a percentage" }).min(0, {
-    message: "Cancellation rate cannot be negative",
-  }).max(100, { message: "Keep rate under 100" }),
+  statsTotalTrips: z.coerce
+    .number({ invalid_type_error: "Enter a number" })
+    .min(0, {
+      message: "Trips cannot be negative",
+    }),
+  statsRating: z.coerce
+    .number({ invalid_type_error: "Enter a number" })
+    .min(0, {
+      message: "Rating cannot be negative",
+    })
+    .max(5, { message: "Rating must be 5 or below" }),
+  statsYearsExperience: z.coerce
+    .number({ invalid_type_error: "Enter a number" })
+    .min(0, {
+      message: "Experience cannot be negative",
+    }),
+  statsCancellationRate: z.coerce
+    .number({ invalid_type_error: "Enter a percentage" })
+    .min(0, {
+      message: "Cancellation rate cannot be negative",
+    })
+    .max(100, { message: "Keep rate under 100" }),
   availabilityShift: z.enum(["morning", "day", "evening", "night"]),
-  availabilityWeekdays: z.string().min(2, { message: "List at least one working day" }),
+  availabilityWeekdays: z
+    .string()
+    .min(2, { message: "List at least one working day" }),
 });
 
 type DriverSettingsValues = z.infer<typeof driverSettingsSchema>;
@@ -117,7 +141,6 @@ const DriverProfilePage = () => {
     defaultValues: formValues,
   });
 
-
   useEffect(() => {
     form.reset(formValues);
   }, [formValues, form]);
@@ -164,7 +187,8 @@ const DriverProfilePage = () => {
         description: "Your driver details were updated successfully.",
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to update profile";
+      const message =
+        error instanceof Error ? error.message : "Unable to update profile";
       toast({
         title: "Update failed",
         description: message,
@@ -198,10 +222,14 @@ const DriverProfilePage = () => {
             </Avatar>
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-3">
-                <h1 className="text-2xl font-semibold text-white sm:text-3xl">{profile.name}</h1>
+                <h1 className="text-2xl font-semibold text-white sm:text-3xl">
+                  {profile.name}
+                </h1>
                 <Badge className="bg-amber-400/15 text-amber-100">Driver</Badge>
               </div>
-              <p className="text-sm text-slate-300">{profile.bio || "Share more about your driving experience."}</p>
+              <p className="text-sm text-slate-300">
+                {profile.bio || "Share more about your driving experience."}
+              </p>
               <div className="flex flex-wrap items-center gap-4 text-xs text-amber-100/80">
                 {profile.location ? (
                   <span className="inline-flex items-center gap-2">
@@ -241,11 +269,19 @@ const DriverProfilePage = () => {
         <main className="mt-10 grid gap-10 lg:grid-cols-[2fr,1fr]">
           <section className="space-y-8">
             <div className="rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur-xl">
-              <h2 className="text-lg font-semibold text-white">Driver profile</h2>
-              <p className="text-sm text-slate-300">Keep your permits, vehicle, and availability details current for dispatch.</p>
+              <h2 className="text-lg font-semibold text-white">
+                Driver profile
+              </h2>
+              <p className="text-sm text-slate-300">
+                Keep your permits, vehicle, and availability details current for
+                dispatch.
+              </p>
 
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleSubmit)} className="mt-6 space-y-6">
+                <form
+                  onSubmit={form.handleSubmit(handleSubmit)}
+                  className="mt-6 space-y-6"
+                >
                   <div className="grid gap-4 sm:grid-cols-2">
                     <FormField
                       control={form.control}
@@ -383,7 +419,12 @@ const DriverProfilePage = () => {
                           <FormItem>
                             <FormLabel>Seating capacity</FormLabel>
                             <FormControl>
-                              <Input type="number" min={4} max={20} {...field} />
+                              <Input
+                                type="number"
+                                min={4}
+                                max={20}
+                                {...field}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -413,7 +454,13 @@ const DriverProfilePage = () => {
                         <FormItem>
                           <FormLabel>Rating</FormLabel>
                           <FormControl>
-                            <Input type="number" step="0.1" min={0} max={5} {...field} />
+                            <Input
+                              type="number"
+                              step="0.1"
+                              min={0}
+                              max={5}
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -439,7 +486,13 @@ const DriverProfilePage = () => {
                         <FormItem>
                           <FormLabel>Cancellation rate (%)</FormLabel>
                           <FormControl>
-                            <Input type="number" step="0.1" min={0} max={100} {...field} />
+                            <Input
+                              type="number"
+                              step="0.1"
+                              min={0}
+                              max={100}
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -459,14 +512,21 @@ const DriverProfilePage = () => {
                           <FormItem>
                             <FormLabel>Preferred shift</FormLabel>
                             <FormControl>
-                              <Select value={field.value} onValueChange={field.onChange}>
+                              <Select
+                                value={field.value}
+                                onValueChange={field.onChange}
+                              >
                                 <SelectTrigger className="text-white">
                                   <SelectValue placeholder="Select a shift" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="morning">Morning</SelectItem>
+                                  <SelectItem value="morning">
+                                    Morning
+                                  </SelectItem>
                                   <SelectItem value="day">Day</SelectItem>
-                                  <SelectItem value="evening">Evening</SelectItem>
+                                  <SelectItem value="evening">
+                                    Evening
+                                  </SelectItem>
                                   <SelectItem value="night">Night</SelectItem>
                                 </SelectContent>
                               </Select>
@@ -498,7 +558,8 @@ const DriverProfilePage = () => {
                   >
                     {isPending ? (
                       <span className="flex items-center gap-2">
-                        <CalendarClock className="h-4 w-4 animate-spin" /> Saving
+                        <CalendarClock className="h-4 w-4 animate-spin" />{" "}
+                        Saving
                       </span>
                     ) : (
                       <span className="flex items-center gap-2">
@@ -513,26 +574,40 @@ const DriverProfilePage = () => {
 
           <aside className="space-y-6">
             <div className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.25em] text-white/60">Performance snapshot</h3>
+              <h3 className="text-sm font-semibold uppercase tracking-[0.25em] text-white/60">
+                Performance snapshot
+              </h3>
               <div className="mt-4 grid gap-3">
                 <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-4">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-white/50">Average rating</p>
-                    <p className="mt-1 text-lg font-semibold text-white">{profile.stats.rating.toFixed(1)} / 5</p>
+                    <p className="text-xs uppercase tracking-[0.3em] text-white/50">
+                      Average rating
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-white">
+                      {profile.stats.rating.toFixed(1)} / 5
+                    </p>
                   </div>
                   <ShieldCheck className="h-6 w-6 text-amber-200" />
                 </div>
                 <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-4">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-white/50">Total trips</p>
-                    <p className="mt-1 text-lg font-semibold text-white">{profile.stats.totalTrips}</p>
+                    <p className="text-xs uppercase tracking-[0.3em] text-white/50">
+                      Total trips
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-white">
+                      {profile.stats.totalTrips}
+                    </p>
                   </div>
                   <GaugeCircle className="h-6 w-6 text-amber-200" />
                 </div>
                 <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-4">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-white/50">Cancellation rate</p>
-                    <p className="mt-1 text-lg font-semibold text-white">{profile.stats.cancellationRate}%</p>
+                    <p className="text-xs uppercase tracking-[0.3em] text-white/50">
+                      Cancellation rate
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-white">
+                      {profile.stats.cancellationRate}%
+                    </p>
                   </div>
                   <Route className="h-6 w-6 text-amber-200" />
                 </div>
@@ -544,7 +619,8 @@ const DriverProfilePage = () => {
                 <CalendarClock className="h-5 w-5" /> Dispatch note
               </p>
               <p className="mt-3 text-amber-100/90">
-                Update your operating days each week to receive priority bookings from riders who favour your routes.
+                Update your operating days each week to receive priority
+                bookings from passengers who favour your routes.
               </p>
             </div>
           </aside>
@@ -555,6 +631,3 @@ const DriverProfilePage = () => {
 };
 
 export default DriverProfilePage;
-
-
-

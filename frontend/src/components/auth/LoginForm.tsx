@@ -25,7 +25,9 @@ const loginSchema = z.object({
     .string()
     .min(3, { message: "Enter your registered email or phone" })
     .max(80),
-  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
+  password: z
+    .string()
+    .min(6, { message: "Password must be at least 6 characters" }),
   remember: z.boolean().optional(),
 });
 
@@ -70,7 +72,8 @@ export const LoginForm = ({ role, onSuccess, className }: LoginFormProps) => {
         onSuccess(result.session);
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to log in";
+      const message =
+        error instanceof Error ? error.message : "Unable to log in";
       toast({
         title: "Login failed",
         description: message,
@@ -82,7 +85,7 @@ export const LoginForm = ({ role, onSuccess, className }: LoginFormProps) => {
   const demoCredentials =
     role === "driver"
       ? { identifier: "karma.driver@himal.app", password: "himal999" }
-      : { identifier: "pema.rider@himal.app", password: "himal123" };
+      : { identifier: "pema.passenger@himal.app", password: "himal123" };
 
   return (
     <div className={cn("space-y-6", className)}>
@@ -97,10 +100,10 @@ export const LoginForm = ({ role, onSuccess, className }: LoginFormProps) => {
                   <FormLabel>Email or phone</FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
                       <Input
                         placeholder={demoCredentials.identifier}
-                        className="pl-10"
+                        className="pl-10 text-black"
                         autoComplete="username"
                         {...field}
                       />
@@ -119,16 +122,18 @@ export const LoginForm = ({ role, onSuccess, className }: LoginFormProps) => {
                   <FormLabel>Password</FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <LockKeyhole className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <LockKeyhole className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
                       <Input
                         type={showPassword ? "text" : "password"}
-                        className="pl-10"
+                        className="pl-10 text-black"
                         autoComplete="current-password"
                         {...field}
                       />
                       <button
                         type="button"
-                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        aria-label={
+                          showPassword ? "Hide password" : "Show password"
+                        }
                         onClick={() => setShowPassword((prev) => !prev)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400 hover:text-slate-200"
                       >
@@ -151,10 +156,14 @@ export const LoginForm = ({ role, onSuccess, className }: LoginFormProps) => {
                   <FormControl>
                     <Checkbox
                       checked={field.value}
-                      onCheckedChange={(checked) => field.onChange(checked === true)}
+                      onCheckedChange={(checked) =>
+                        field.onChange(checked === true)
+                      }
                     />
                   </FormControl>
-                  <FormLabel className="font-normal">Remember me on this device</FormLabel>
+                  <FormLabel className="font-normal">
+                    Remember me on this device
+                  </FormLabel>
                 </FormItem>
               )}
             />
@@ -184,10 +193,15 @@ export const LoginForm = ({ role, onSuccess, className }: LoginFormProps) => {
       </Form>
 
       <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-200/90">
-        <p className="text-xs uppercase tracking-[0.3em] text-white/50">Demo credentials</p>
+        <p className="text-xs uppercase tracking-[0.3em] text-white/50">
+          Demo credentials
+        </p>
         <div className="mt-2 flex flex-col gap-1 text-xs text-slate-300">
           <span>
-            {demoCredentials.identifier} / <span className="font-semibold text-slate-100">{demoCredentials.password}</span>
+            {demoCredentials.identifier} /{" "}
+            <span className="font-semibold text-slate-100">
+              {demoCredentials.password}
+            </span>
           </span>
           <span>Use the demo account to explore the experience instantly.</span>
         </div>
@@ -221,4 +235,3 @@ export const LoginForm = ({ role, onSuccess, className }: LoginFormProps) => {
     </div>
   );
 };
-
