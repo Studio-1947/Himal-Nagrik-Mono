@@ -10,27 +10,34 @@ const driverHighlights = [
   {
     icon: CalendarClock,
     title: "Plan your shifts",
-    description: "Lock your preferred departure slots and keep regular riders informed.",
+    description:
+      "Lock your preferred departure slots and keep regular passengers informed.",
   },
   {
     icon: Gauge,
     title: "Performance insights",
-    description: "Monitor ratings, completed rides, and seat fill rate in one glance.",
+    description:
+      "Monitor ratings, completed rides, and seat fill rate in one glance.",
   },
   {
     icon: ListChecks,
     title: "Route compliance",
-    description: "Get notified about permits, checkpoints, and weather advisories in real time.",
+    description:
+      "Get notified about permits, checkpoints, and weather advisories in real time.",
   },
 ];
 
 const DriverLoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as { from?: { pathname?: string } } | undefined)?.from?.pathname;
+  const from = (location.state as { from?: { pathname?: string } } | undefined)
+    ?.from?.pathname;
 
   const handleSuccess = (session: AuthSession) => {
-    const fallback = session.profile.role === "driver" ? "/driver/profile" : "/rider/profile";
+    const fallback =
+      session.profile.role === "driver"
+        ? "/driver/profile"
+        : "/passenger/profile";
     navigate(from ?? fallback, { replace: true });
   };
 
@@ -64,7 +71,10 @@ const DriverLoginPage = () => {
           </p>
           <div className="mt-4 space-y-4">
             {driverHighlights.map(({ icon: Icon, title, description }) => (
-              <div key={title} className="flex items-start gap-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div
+                key={title}
+                className="flex items-start gap-4 rounded-2xl border border-white/10 bg-white/5 p-4"
+              >
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-400/15 text-amber-200">
                   <Icon className="h-5 w-5" />
                 </div>
@@ -87,7 +97,7 @@ const DriverLoginPage = () => {
             className="border-amber-300/40 bg-transparent text-amber-100 hover:bg-amber-400/10"
             onClick={() => navigate("/login")}
           >
-            Rider sign-in
+            Passenger sign-in
           </Button>
         </div>
       </div>

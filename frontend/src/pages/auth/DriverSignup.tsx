@@ -10,17 +10,20 @@ const driverHighlights = [
   {
     icon: CarFront,
     title: "Verified fleet",
-    description: "Showcase your routes, seat capacity, and permits to trusted riders.",
+    description:
+      "Showcase your routes, seat capacity, and permits to trusted passengers.",
   },
   {
     icon: Gauge,
     title: "Performance pulse",
-    description: "Track completion rate, rider feedback, and seat fill at a glance.",
+    description:
+      "Track completion rate, passenger feedback, and seat fill at a glance.",
   },
   {
     icon: ListChecks,
     title: "Proactive compliance",
-    description: "Get reminders for renewals, weather advisories, and checkpoint updates.",
+    description:
+      "Get reminders for renewals, weather advisories, and checkpoint updates.",
   },
 ];
 
@@ -28,7 +31,10 @@ const DriverSignupPage = () => {
   const navigate = useNavigate();
 
   const handleSuccess = (session: AuthSession) => {
-    const fallback = session.profile.role === "driver" ? "/driver/profile" : "/rider/profile";
+    const fallback =
+      session.profile.role === "driver"
+        ? "/driver/profile"
+        : "/passenger/profile";
     navigate(fallback, { replace: true });
   };
 
@@ -49,7 +55,10 @@ const DriverSignupPage = () => {
           </p>
           <div className="mt-4 space-y-4">
             {driverHighlights.map(({ icon: Icon, title, description }) => (
-              <div key={title} className="flex items-start gap-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div
+                key={title}
+                className="flex items-start gap-4 rounded-2xl border border-white/10 bg-white/5 p-4"
+              >
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-400/15 text-amber-200">
                   <Icon className="h-5 w-5" />
                 </div>
@@ -80,4 +89,3 @@ const DriverSignupPage = () => {
 };
 
 export default DriverSignupPage;
-

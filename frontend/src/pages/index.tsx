@@ -68,11 +68,11 @@ const Index = () => {
       navigate("/login");
       return;
     }
-    navigate(role === "driver" ? "/driver/profile" : "/rider/profile");
+    navigate(role === "driver" ? "/driver/profile" : "/passenger/profile");
   };
 
   const goToDriverLogin = () => navigate("/driver/login");
-  const goToRiderLogin = () => navigate("/login");
+  const goToPassengerLogin = () => navigate("/login");
 
   const goBack = () => {
     switch (currentStep) {
@@ -92,18 +92,22 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <header className="container mx-auto flex items-center justify-between px-4 py-6 text-white">
         <div className="space-y-1">
-          <span className="text-xs uppercase tracking-[0.35em] text-white/60">Himal Nagrik</span>
-          <p className="text-lg font-semibold">Shared journeys of Darjeeling</p>
+          <span className="text-xs uppercase tracking-[0.35em] text-black/60">
+            Himal Nagrik
+          </span>
+          <p className="text-lg font-semibold text-black/60">
+            Shared journeys of Darjeeling
+          </p>
         </div>
         <div className="flex items-center gap-3">
           {isAuthenticated ? (
             <>
-              <span className="hidden text-sm text-white/70 sm:inline">
+              <span className="hidden text-sm text-black/70 sm:inline">
                 Hi, {profile?.name.split(" ")[0] ?? "traveller"}
               </span>
               <Button
                 variant="outline"
-                className="border-white/20 bg-white/10 text-white hover:bg-white/20"
+                className="border-black/20 bg-black/10 text-black hover:bg-black/20"
                 onClick={goToDashboard}
               >
                 My dashboard
@@ -113,16 +117,16 @@ const Index = () => {
             <>
               <Button
                 variant="ghost"
-                className="text-white hover:bg-white/10"
+                className="text-black hover:bg-white/10"
                 onClick={goToDriverLogin}
               >
                 Driver login
               </Button>
               <Button
                 className="bg-gradient-to-r from-sky-500 via-emerald-500 to-emerald-400 text-white shadow-emerald-500/30 hover:opacity-90"
-                onClick={goToRiderLogin}
+                onClick={goToPassengerLogin}
               >
-                Rider login
+                Passenger login
               </Button>
             </>
           )}
@@ -130,12 +134,12 @@ const Index = () => {
       </header>
       {/* Hero Section */}
       <div className="relative h-64 md:h-80 overflow-hidden">
-        <img 
-          src={heroTaxiImage} 
-          alt="Taxi in Darjeeling mountains" 
+        <img
+          src={heroTaxiImage}
+          alt="Taxi in Darjeeling mountains"
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-black/30" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-black/60" />
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center text-white space-y-4">
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
@@ -145,15 +149,24 @@ const Index = () => {
               Book shared taxis across the beautiful hills of Darjeeling
             </p>
             <div className="flex items-center justify-center gap-4 text-sm">
-              <Badge variant="secondary" className="bg-white/10 text-white border-white/20">
+              <Badge
+                variant="secondary"
+                className="bg-white/10 text-white border-white/20"
+              >
                 <MapPin className="h-3 w-3 mr-1" />
                 15+ Routes
               </Badge>
-              <Badge variant="secondary" className="bg-white/10 text-white border-white/20">
+              <Badge
+                variant="secondary"
+                className="bg-white/10 text-white border-white/20"
+              >
                 <Car className="h-3 w-3 mr-1" />
                 50+ Taxis
               </Badge>
-              <Badge variant="secondary" className="bg-white/10 text-white border-white/20">
+              <Badge
+                variant="secondary"
+                className="bg-white/10 text-white border-white/20"
+              >
                 <Users className="h-3 w-3 mr-1" />
                 1000+ Passengers
               </Badge>
@@ -177,24 +190,24 @@ const Index = () => {
         {currentStep === "route" && (
           <RouteSelector onRouteSelect={handleRouteSelect} />
         )}
-        
+
         {currentStep === "availability" && selectedRoute && (
-          <TaxiAvailability 
-            route={selectedRoute} 
-            onBookSeat={handleTaxiSelect} 
+          <TaxiAvailability
+            route={selectedRoute}
+            onBookSeat={handleTaxiSelect}
           />
         )}
-        
+
         {currentStep === "booking" && selectedTaxi && selectedRoute && (
-          <BookingConfirmation 
+          <BookingConfirmation
             taxi={selectedTaxi}
             route={selectedRoute}
             onConfirmBooking={handleBookingConfirm}
           />
         )}
-        
+
         {currentStep === "success" && bookingData && (
-          <BookingSuccess 
+          <BookingSuccess
             bookingData={bookingData}
             onNewBooking={handleNewBooking}
           />
@@ -208,8 +221,8 @@ const Index = () => {
             <div className="space-y-4">
               <h3 className="font-semibold text-lg">Darjeeling Taxi</h3>
               <p className="text-sm text-muted-foreground">
-                Connecting you with shared taxis across the beautiful hills of Darjeeling.
-                Safe, reliable, and community-driven transport.
+                Connecting you with shared taxis across the beautiful hills of
+                Darjeeling. Safe, reliable, and community-driven transport.
               </p>
             </div>
             <div className="space-y-4">
@@ -231,22 +244,15 @@ const Index = () => {
             </div>
           </div>
           <div className="border-t mt-8 pt-8 text-center text-sm text-muted-foreground">
-            <p>&copy; 2024 Darjeeling Taxi. Connecting communities across the hills.</p>
+            <p>
+              &copy; 2024 Darjeeling Taxi. Connecting communities across the
+              hills.
+            </p>
           </div>
         </div>
       </footer>
-
     </div>
   );
 };
 
 export default Index;
-
-
-
-
-
-
-
-
-

@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CalendarClock, Loader2, LockKeyhole, Mail, MapPin, Phone, Users } from "lucide-react";
+import {
+  CalendarClock,
+  Loader2,
+  LockKeyhole,
+  Mail,
+  MapPin,
+  Phone,
+  Users,
+} from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -14,7 +22,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -23,18 +37,24 @@ import { cn } from "@/lib/utils";
 
 const optionalShortString = z.string().max(160).optional().or(z.literal(""));
 const optionalMediumString = z.string().max(120).optional().or(z.literal(""));
-const optionalPhoneString = z.string().min(6, { message: "Enter a valid phone" }).optional().or(z.literal(""));
+const optionalPhoneString = z
+  .string()
+  .min(6, { message: "Enter a valid phone" })
+  .optional()
+  .or(z.literal(""));
 
-const riderSignupSchema = z
+const passengerSignupSchema = z
   .object({
-    role: z.literal("rider"),
+    role: z.literal("passenger"),
     name: z.string().min(2, { message: "Name must be at least 2 characters" }),
     email: z.string().email({ message: "Enter a valid email" }),
     phone: optionalPhoneString,
     location: optionalMediumString,
     bio: optionalShortString,
     preferredSeat: z.enum(["front", "middle", "back"]).optional(),
-    password: z.string().min(6, { message: "Password must be at least 6 characters" }),
+    password: z
+      .string()
+      .min(6, { message: "Password must be at least 6 characters" }),
     confirmPassword: z.string().min(6, { message: "Confirm your password" }),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -51,7 +71,9 @@ const driverSignupSchema = z
     location: optionalMediumString,
     bio: optionalShortString,
     licenseNumber: optionalMediumString,
-    vehicleManufacturer: z.string().min(2, { message: "Enter the manufacturer" }),
+    vehicleManufacturer: z
+      .string()
+      .min(2, { message: "Enter the manufacturer" }),
     vehicleModel: z.string().min(1, { message: "Enter the vehicle model" }),
     vehicleRegistrationNumber: optionalMediumString,
     vehicleCapacity: z.coerce
@@ -64,7 +86,9 @@ const driverSignupSchema = z
       .min(0, { message: "Experience cannot be negative" })
       .max(50, { message: "Experience must be 50 or less" }),
     availabilityShift: z.enum(["morning", "day", "evening", "night"]),
-    password: z.string().min(6, { message: "Password must be at least 6 characters" }),
+    password: z
+      .string()
+      .min(6, { message: "Password must be at least 6 characters" }),
     confirmPassword: z.string().min(6, { message: "Confirm your password" }),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -72,9 +96,9 @@ const driverSignupSchema = z
     message: "Passwords must match",
   });
 
-export type RiderSignupValues = z.infer<typeof riderSignupSchema>;
+export type PassengerSignupValues = z.infer<typeof passengerSignupSchema>;
 export type DriverSignupValues = z.infer<typeof driverSignupSchema>;
-export type SignupFormValues = RiderSignupValues | DriverSignupValues;
+export type SignupFormValues = PassengerSignupValues | DriverSignupValues;
 
 interface SignupFormProps {
   role: AuthRole;
@@ -82,8 +106,8 @@ interface SignupFormProps {
   className?: string;
 }
 
-const riderDefaultValues: RiderSignupValues = {
-  role: "rider",
+const passengerDefaultValues: PassengerSignupValues = {
+  role: "passenger",
   name: "",
   email: "",
   phone: "",
@@ -122,10 +146,12 @@ const trimToUndefined = (value?: string) => {
 };
 
 export const SignupForm = ({ role, onSuccess, className }: SignupFormProps) => {
-  const schema = role === "driver" ? driverSignupSchema : riderSignupSchema;
-  const defaultValues = (role === "driver"
-    ? { ...driverDefaultValues }
-    : { ...riderDefaultValues }) as SignupFormValues;
+  const schema = role === "driver" ? driverSignupSchema : passengerSignupSchema;
+  const defaultValues = (
+    role === "driver"
+      ? { ...driverDefaultValues }
+      : { ...passengerDefaultValues }
+  ) as SignupFormValues;
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(schema),
@@ -153,43 +179,58 @@ export const SignupForm = ({ role, onSuccess, className }: SignupFormProps) => {
           ? {
               ...basePayload,
               role: "driver" as const,
-              licenseNumber: trimToUndefined((values as DriverSignupValues).licenseNumber),
+              licenseNumber: trimToUndefined(
+                (values as DriverSignupValues).licenseNumber
+              ),
               vehicle: {
-                manufacturer: (values as DriverSignupValues).vehicleManufacturer,
+                manufacturer: (values as DriverSignupValues)
+                  .vehicleManufacturer,
                 model: (values as DriverSignupValues).vehicleModel,
-                registrationNumber: trimToUndefined((values as DriverSignupValues).vehicleRegistrationNumber),
+                registrationNumber: trimToUndefined(
+                  (values as DriverSignupValues).vehicleRegistrationNumber
+                ),
                 capacity: (values as DriverSignupValues).vehicleCapacity,
-                color: trimToUndefined((values as DriverSignupValues).vehicleColor),
+                color: trimToUndefined(
+                  (values as DriverSignupValues).vehicleColor
+                ),
               },
               availability: {
                 shift: (values as DriverSignupValues).availabilityShift,
                 weekdays: ["Mon", "Tue", "Wed", "Thu", "Fri"],
               },
-              yearsOfExperience: (values as DriverSignupValues).yearsOfExperience,
+              yearsOfExperience: (values as DriverSignupValues)
+                .yearsOfExperience,
             }
           : {
               ...basePayload,
-              role: "rider" as const,
-              preferences: (values as RiderSignupValues).preferredSeat
-                ? { preferredSeat: (values as RiderSignupValues).preferredSeat }
+              role: "passenger" as const,
+              preferences: (values as PassengerSignupValues).preferredSeat
+                ? {
+                    preferredSeat: (values as PassengerSignupValues)
+                      .preferredSeat,
+                  }
                 : undefined,
             };
 
       const result = await registerAccount(payload);
 
       toast({
-        title: role === "driver" ? "Driver account created" : "Welcome to Himal Nagrik",
+        title:
+          role === "driver"
+            ? "Driver account created"
+            : "Welcome to Himal Nagrik",
         description:
           role === "driver"
             ? "Your driver workspace is ready. Add your route details to get started."
-            : "Your rider profile is live. Start planning your hill journeys now.",
+            : "Your passenger profile is live. Start planning your hill journeys now.",
       });
 
       if (onSuccess) {
         onSuccess(result.session);
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to sign up";
+      const message =
+        error instanceof Error ? error.message : "Unable to sign up";
       toast({
         title: "Sign-up failed",
         description: message,
@@ -214,8 +255,12 @@ export const SignupForm = ({ role, onSuccess, className }: SignupFormProps) => {
                   <FormLabel>Full name</FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <Users className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                      <Input placeholder="Tsering Wangmo" className="pl-10" {...field} />
+                      <Users className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
+                      <Input
+                        placeholder="Tsering Wangmo"
+                        className="pl-10 text-black"
+                        {...field}
+                      />
                     </div>
                   </FormControl>
                   <FormMessage />
@@ -230,11 +275,11 @@ export const SignupForm = ({ role, onSuccess, className }: SignupFormProps) => {
                   <FormLabel>Email</FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
                       <Input
                         type="email"
                         placeholder="you@himal.app"
-                        className="pl-10"
+                        className="pl-10 text-black"
                         autoComplete="email"
                         {...field}
                       />
@@ -252,8 +297,12 @@ export const SignupForm = ({ role, onSuccess, className }: SignupFormProps) => {
                   <FormLabel>Phone</FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                      <Input placeholder="+91 98 7654 3210" className="pl-10" {...field} />
+                      <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
+                      <Input
+                        placeholder="+91 98 7654 3210"
+                        className="pl-10 text-black"
+                        {...field}
+                      />
                     </div>
                   </FormControl>
                   <FormMessage />
@@ -268,8 +317,12 @@ export const SignupForm = ({ role, onSuccess, className }: SignupFormProps) => {
                   <FormLabel>Home base</FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                      <Input placeholder="Darjeeling Bazaar" className="pl-10" {...field} />
+                      <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
+                      <Input
+                        placeholder="Darjeeling Bazaar"
+                        className="pl-10 text-black"
+                        {...field}
+                      />
                     </div>
                   </FormControl>
                   <FormMessage />
@@ -283,23 +336,34 @@ export const SignupForm = ({ role, onSuccess, className }: SignupFormProps) => {
                 <FormItem className="sm:col-span-2">
                   <FormLabel>About you</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Share a quick intro" rows={3} {...field} />
+                    <Textarea
+                      placeholder="Share a quick intro"
+                      className="text-black"
+                      rows={3}
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            {role === "rider" ? (
+            {role === "passenger" ? (
               <FormField
                 control={form.control}
                 name="preferredSeat"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Preferred seat</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value ?? undefined}>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value ?? undefined}
+                    >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Choose a seat" />
+                          <SelectValue
+                            placeholder="Choose a seat"
+                            className="text-black"
+                          />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -321,7 +385,11 @@ export const SignupForm = ({ role, onSuccess, className }: SignupFormProps) => {
                     <FormItem>
                       <FormLabel>License number</FormLabel>
                       <FormControl>
-                        <Input placeholder="WB-DRI-2024-7788" {...field} />
+                        <Input
+                          placeholder="WB-DRI-2024-7788"
+                          {...field}
+                          className="text-black"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -334,7 +402,11 @@ export const SignupForm = ({ role, onSuccess, className }: SignupFormProps) => {
                     <FormItem>
                       <FormLabel>Vehicle manufacturer</FormLabel>
                       <FormControl>
-                        <Input placeholder="Mahindra" {...field} />
+                        <Input
+                          placeholder="Mahindra"
+                          {...field}
+                          className="text-black"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -347,7 +419,11 @@ export const SignupForm = ({ role, onSuccess, className }: SignupFormProps) => {
                     <FormItem>
                       <FormLabel>Vehicle model</FormLabel>
                       <FormControl>
-                        <Input placeholder="Bolero" {...field} />
+                        <Input
+                          placeholder="Bolero"
+                          {...field}
+                          className="text-black"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -360,7 +436,11 @@ export const SignupForm = ({ role, onSuccess, className }: SignupFormProps) => {
                     <FormItem>
                       <FormLabel>Registration number</FormLabel>
                       <FormControl>
-                        <Input placeholder="WB-76A-4210" {...field} />
+                        <Input
+                          placeholder="WB-76A-4210"
+                          {...field}
+                          className="text-black"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -373,7 +453,13 @@ export const SignupForm = ({ role, onSuccess, className }: SignupFormProps) => {
                     <FormItem>
                       <FormLabel>Seat capacity</FormLabel>
                       <FormControl>
-                        <Input type="number" min={4} max={18} {...field} />
+                        <Input
+                          type="number"
+                          min={4}
+                          max={18}
+                          {...field}
+                          className="text-black"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -386,7 +472,11 @@ export const SignupForm = ({ role, onSuccess, className }: SignupFormProps) => {
                     <FormItem>
                       <FormLabel>Vehicle color</FormLabel>
                       <FormControl>
-                        <Input placeholder="Forest green" {...field} />
+                        <Input
+                          placeholder="Forest green"
+                          {...field}
+                          className="text-black"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -399,7 +489,13 @@ export const SignupForm = ({ role, onSuccess, className }: SignupFormProps) => {
                     <FormItem>
                       <FormLabel>Experience (years)</FormLabel>
                       <FormControl>
-                        <Input type="number" min={0} max={50} {...field} />
+                        <Input
+                          type="number"
+                          min={0}
+                          max={50}
+                          {...field}
+                          className="text-black"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -411,7 +507,10 @@ export const SignupForm = ({ role, onSuccess, className }: SignupFormProps) => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Preferred shift</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Choose a shift" />
@@ -438,18 +537,20 @@ export const SignupForm = ({ role, onSuccess, className }: SignupFormProps) => {
                   <FormLabel>Password</FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <LockKeyhole className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <LockKeyhole className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
                       <Input
                         type={passwordFieldType}
-                        className="pl-10"
+                        className="pl-10 text-black"
                         autoComplete="new-password"
                         {...field}
                       />
                       <button
                         type="button"
-                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        aria-label={
+                          showPassword ? "Hide password" : "Show password"
+                        }
                         onClick={() => setShowPassword((prev) => !prev)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400 hover:text-slate-200"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-black"
                       >
                         {showPassword ? "Hide" : "Show"}
                       </button>
@@ -467,18 +568,22 @@ export const SignupForm = ({ role, onSuccess, className }: SignupFormProps) => {
                   <FormLabel>Confirm password</FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <LockKeyhole className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <LockKeyhole className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
                       <Input
                         type={confirmPasswordFieldType}
-                        className="pl-10"
+                        className="pl-10 text-black"
                         autoComplete="new-password"
                         {...field}
                       />
                       <button
                         type="button"
-                        aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                        aria-label={
+                          showConfirmPassword
+                            ? "Hide password"
+                            : "Show password"
+                        }
                         onClick={() => setShowConfirmPassword((prev) => !prev)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400 hover:text-slate-200"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-black "
                       >
                         {showConfirmPassword ? "Hide" : "Show"}
                       </button>

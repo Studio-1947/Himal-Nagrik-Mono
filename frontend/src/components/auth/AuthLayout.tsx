@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import heroTaxiImage from "@/assets/hero-taxi.jpg";
 import { cn } from "@/lib/utils";
 
-export type AuthLayoutVariant = "rider" | "driver";
+export type AuthLayoutVariant = "passenger" | "driver";
 
 interface AuthLayoutProps {
   children: ReactNode;
@@ -22,7 +22,7 @@ const variantStyles: Record<
   AuthLayoutVariant,
   { badge: string; glow: string; shadow: string }
 > = {
-  rider: {
+  passenger: {
     badge: "border-emerald-500/50 bg-emerald-500/10 text-emerald-200",
     glow: "from-emerald-500/20 via-sky-500/10 to-transparent",
     shadow: "shadow-[0_30px_90px_rgba(16,185,129,0.22)]",
@@ -39,7 +39,7 @@ export const AuthLayout = ({
   title,
   subtitle,
   eyebrow,
-  variant = "rider",
+  variant = "passenger",
   supportCta,
 }: AuthLayoutProps) => {
   const styles = variantStyles[variant];
@@ -64,7 +64,10 @@ export const AuthLayout = ({
       <div className="relative z-10 flex min-h-screen flex-col lg:flex-row">
         <aside className="hidden w-full flex-1 flex-col justify-between border-r border-white/10 bg-gradient-to-b from-white/5 via-transparent to-transparent px-12 py-12 lg:flex">
           <div>
-            <Link to="/" className="inline-flex items-center gap-2 text-lg font-semibold">
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 text-lg font-semibold"
+            >
               <span className="rounded-full bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.2em] text-white/80">
                 Himal Nagrik
               </span>
@@ -77,20 +80,29 @@ export const AuthLayout = ({
                 </span>
               </h1>
               <p className="max-w-md text-base text-slate-300">
-                One place for riders and drivers to manage their routes, schedules, and community travel in the Himalayas.
-                Stay synced with the Darjeeling vibe wherever you drive or ride.
+                One place for passengers and drivers to manage their routes,
+                schedules, and community travel in the Himalayas. Stay synced
+                with the Darjeeling vibe wherever you drive or ride.
               </p>
             </div>
           </div>
 
           <div className="mt-12 grid gap-4">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
-              <p className="text-sm uppercase tracking-[0.3em] text-white/50">Trusted network</p>
-              <p className="mt-3 text-lg font-medium text-white">2,500+ daily travellers rely on Himal Nagrik</p>
+              <p className="text-sm uppercase tracking-[0.3em] text-white/50">
+                Trusted network
+              </p>
+              <p className="mt-3 text-lg font-medium text-white">
+                2,500+ daily travellers rely on Himal Nagrik
+              </p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
-              <p className="text-sm uppercase tracking-[0.3em] text-white/50">Mountain ready</p>
-              <p className="mt-3 text-lg font-medium text-white">Weather alerts, live seat counts, and route insights</p>
+              <p className="text-sm uppercase tracking-[0.3em] text-white/50">
+                Mountain ready
+              </p>
+              <p className="mt-3 text-lg font-medium text-white">
+                Weather alerts, live seat counts, and route insights
+              </p>
             </div>
           </div>
         </aside>
@@ -111,7 +123,9 @@ export const AuthLayout = ({
               <h2 className="mt-6 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
                 {title}
               </h2>
-              <p className="mt-3 text-base text-slate-300 sm:text-lg">{subtitle}</p>
+              <p className="mt-3 text-base text-slate-300 sm:text-lg">
+                {subtitle}
+              </p>
             </div>
 
             <div
@@ -140,6 +154,3 @@ export const AuthLayout = ({
     </div>
   );
 };
-
-
-

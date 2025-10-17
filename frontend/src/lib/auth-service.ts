@@ -1,6 +1,6 @@
 ﻿import { apiRequest } from "./api-client";
 
-export type AuthRole = "rider" | "driver";
+export type AuthRole = "passenger" | "driver";
 
 interface BaseProfile {
   id: string;
@@ -13,8 +13,8 @@ interface BaseProfile {
   bio?: string;
 }
 
-export interface RiderProfile extends BaseProfile {
-  role: "rider";
+export interface PassengerProfile extends BaseProfile {
+  role: "passenger";
   emergencyContact?: {
     name: string;
     phone: string;
@@ -57,7 +57,7 @@ export interface DriverProfile extends BaseProfile {
   };
 }
 
-export type AuthProfile = RiderProfile | DriverProfile;
+export type AuthProfile = PassengerProfile | DriverProfile;
 
 export interface AuthSession {
   token: string;
@@ -83,10 +83,10 @@ type BaseRegisterPayload = {
   bio?: string;
 };
 
-export type RiderRegisterPayload = BaseRegisterPayload & {
-  role: "rider";
-  preferences?: Partial<RiderProfile["preferences"]>;
-  emergencyContact?: RiderProfile["emergencyContact"];
+export type PassengerRegisterPayload = BaseRegisterPayload & {
+  role: "passenger";
+  preferences?: Partial<PassengerProfile["preferences"]>;
+  emergencyContact?: PassengerProfile["emergencyContact"];
 };
 
 export type DriverRegisterPayload = BaseRegisterPayload & {
@@ -97,16 +97,20 @@ export type DriverRegisterPayload = BaseRegisterPayload & {
   yearsOfExperience?: number;
 };
 
-export type RegisterPayload = RiderRegisterPayload | DriverRegisterPayload;
-export type RiderProfileUpdate = Partial<Omit<RiderProfile, "id" | "role">> & {
-  role: "rider";
+export type RegisterPayload = PassengerRegisterPayload | DriverRegisterPayload;
+export type PassengerProfileUpdate = Partial<
+  Omit<PassengerProfile, "id" | "role">
+> & {
+  role: "passenger";
 };
 
-export type DriverProfileUpdate = Partial<Omit<DriverProfile, "id" | "role">> & {
+export type DriverProfileUpdate = Partial<
+  Omit<DriverProfile, "id" | "role">
+> & {
   role: "driver";
 };
 
-export type ProfileUpdateInput = RiderProfileUpdate | DriverProfileUpdate;
+export type ProfileUpdateInput = PassengerProfileUpdate | DriverProfileUpdate;
 
 interface ApiLoginResponse {
   token: string;
@@ -125,14 +129,14 @@ interface MockAccount {
 }
 
 const mockAccounts: Record<AuthRole, MockAccount[]> = {
-  rider: [
+  passenger: [
     {
       password: "himal123",
       profile: {
-        id: "rider-1",
-        role: "rider",
+        id: "passenger-1",
+        role: "passenger",
         name: "Pema Sherpa",
-        email: "pema.rider@himal.app",
+        email: "pema.passenger@himal.app",
         phone: "+91 99887 66554",
         avatarUrl: undefined,
         location: "Darjeeling Bazaar",
@@ -204,10 +208,76 @@ const mockAccounts: Record<AuthRole, MockAccount[]> = {
 
 const mockSessions = new Map<string, AuthProfile>();
 
+const findMockAccount = (
+  role: AuthRole,
+  identifier: string
+): MockAccount | undefined => {
+  return mockAccounts[role].find(
+    (account) =>
+      account.profile.email === identifier ||
+      account.profile.phone === identifier
+  );
+};
 
+const createMockSession = (profile: AuthProfile): AuthSession => {
+  const token = `mock-token-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2)}`;
+  mockSessions.set(token, deepClone(profile));
+  return {
+    token,
+    refreshToken: `mock-refresh-${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}`,
+    issuedAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    profile: deepClone(profile),
+  };
+};
+
+const mergeProfile = (
+  existing: AuthProfile,
+  updates: ProfileUpdateInput
+): AuthProfile => {
+  if (updates.role !== existing.role) {
+    throw new Error("Cannot change role");
+  }
+
+  if (existing.role === "passenger" && updates.role === "passenger") {
+    return {
+      ...existing,
+      ...updates,
+      preferences: updates.preferences
+        ? { ...existing.preferences, ...updates.preferences }
+        : existing.preferences,
+      emergencyContact:
+        updates.emergencyContact !== undefined
+          ? updates.emergencyContact
+          : existing.emergencyContact,
+    };
+  }
+
+  if (existing.role === "driver" && updates.role === "driver") {
+    return {
+      ...existing,
+      ...updates,
+      vehicle: updates.vehicle
+        ? { ...existing.vehicle, ...updates.vehicle }
+        : existing.vehicle,
+      stats: updates.stats
+        ? { ...existing.stats, ...updates.stats }
+        : existing.stats,
+      availability: updates.availability
+        ? { ...existing.availability, ...updates.availability }
+        : existing.availability,
+    };
+  }
+
+  return existing;
+};
 
 const generateProfileId = (role: AuthRole) => {
-  const prefix = role === "driver" ? "driver" : "rider";
+  const prefix = role === "driver" ? "driver" : "passenger";
   const counter = mockAccounts[role].length + mockSessions.size + 1;
   return `${prefix}-${counter}-${Date.now().toString(36)}`;
 };
@@ -221,12 +291,14 @@ const ensureUniqueAccount = (role: AuthRole, email: string, phone?: string) => {
   }
 };
 
-const buildProfileFromRegistration = (payload: RegisterPayload): AuthProfile => {
+const buildProfileFromRegistration = (
+  payload: RegisterPayload
+): AuthProfile => {
   const id = generateProfileId(payload.role);
-  if (payload.role === "rider") {
+  if (payload.role === "passenger") {
     return {
       id,
-      role: "rider",
+      role: "passenger",
       name: payload.name,
       email: payload.email,
       phone: payload.phone,
@@ -249,13 +321,25 @@ const buildProfileFromRegistration = (payload: RegisterPayload): AuthProfile => 
     model: payload.vehicle?.model ?? "Bolero",
     registrationNumber:
       payload.vehicle?.registrationNumber ??
-      `WB-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
+      `WB-${Math.random()
+        .toString(36)
+        .slice(2, 6)
+        .toUpperCase()}-${Math.random()
+        .toString(36)
+        .slice(2, 6)
+        .toUpperCase()}`,
     capacity: payload.vehicle?.capacity ?? 10,
     color: payload.vehicle?.color,
   };
 
   const availability = {
-    weekdays: payload.availability?.weekdays ?? ["Mon", "Tue", "Wed", "Thu", "Fri"],
+    weekdays: payload.availability?.weekdays ?? [
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri",
+    ],
     shift: payload.availability?.shift ?? "day",
   };
 
@@ -338,10 +422,13 @@ export const authService = {
     if (USE_AUTH_MOCKS) {
       return mockRegister(payload);
     }
-    const response = await apiRequest<ApiLoginResponse, RegisterPayload>("/auth/register", {
-      method: "POST",
-      json: payload,
-    });
+    const response = await apiRequest<ApiLoginResponse, RegisterPayload>(
+      "/auth/register",
+      {
+        method: "POST",
+        json: payload,
+      }
+    );
     return {
       token: response.token,
       refreshToken: response.refreshToken,
@@ -354,10 +441,13 @@ export const authService = {
     if (USE_AUTH_MOCKS) {
       return mockLogin(payload);
     }
-    const response = await apiRequest<ApiLoginResponse, LoginPayload>("/auth/login", {
-      method: "POST",
-      json: payload,
-    });
+    const response = await apiRequest<ApiLoginResponse, LoginPayload>(
+      "/auth/login",
+      {
+        method: "POST",
+        json: payload,
+      }
+    );
     return {
       token: response.token,
       refreshToken: response.refreshToken,

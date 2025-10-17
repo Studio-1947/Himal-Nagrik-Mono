@@ -5,12 +5,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/auth-context";
 import DriverLoginPage from "@/pages/auth/DriverLogin";
 import DriverSignupPage from "@/pages/auth/DriverSignup";
-import RiderLoginPage from "@/pages/auth/RiderLogin";
-import RiderSignupPage from "@/pages/auth/RiderSignup";
+import PassengerLoginPage from "@/pages/auth/PassengerLogin";
+import PassengerSignupPage from "@/pages/auth/PassengerSignup";
 import DriverProfilePage from "@/pages/driver/Profile";
 import Index from "@/pages/index";
 import NotFound from "@/pages/NotFound";
-import RiderProfilePage from "@/pages/rider/Profile";
+import PassengerProfilePage from "@/pages/passenger/Profile";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
@@ -25,15 +25,15 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/login" element={<RiderLoginPage />} />
-            <Route path="/signup" element={<RiderSignupPage />} />
+            <Route path="/login" element={<PassengerLoginPage />} />
+            <Route path="/signup" element={<PassengerSignupPage />} />
             <Route path="/driver/login" element={<DriverLoginPage />} />
             <Route path="/driver/signup" element={<DriverSignupPage />} />
             <Route
-              path="/rider/profile"
+              path="/passenger/profile"
               element={
-                <ProtectedRoute requiredRole="rider">
-                  <RiderProfilePage />
+                <ProtectedRoute requiredRole="passenger">
+                  <PassengerProfilePage />
                 </ProtectedRoute>
               }
             />
