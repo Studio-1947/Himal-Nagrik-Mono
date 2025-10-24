@@ -8,9 +8,11 @@ import DriverSignupPage from "@/pages/auth/DriverSignup";
 import PassengerLoginPage from "@/pages/auth/PassengerLogin";
 import PassengerSignupPage from "@/pages/auth/PassengerSignup";
 import DriverProfilePage from "@/pages/driver/Profile";
+import DriverDashboard from "@/pages/driver/Dashboard";
 import Index from "@/pages/index";
 import NotFound from "@/pages/NotFound";
 import PassengerProfilePage from "@/pages/passenger/Profile";
+import PassengerDashboard from "@/pages/passenger/Dashboard";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
@@ -29,11 +31,31 @@ const App = () => (
             <Route path="/signup" element={<PassengerSignupPage />} />
             <Route path="/driver/login" element={<DriverLoginPage />} />
             <Route path="/driver/signup" element={<DriverSignupPage />} />
+            
+            {/* Passenger Routes */}
+            <Route
+              path="/passenger/dashboard"
+              element={
+                <ProtectedRoute requiredRole="passenger">
+                  <PassengerDashboard />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/passenger/profile"
               element={
                 <ProtectedRoute requiredRole="passenger">
                   <PassengerProfilePage />
+                </ProtectedRoute>
+              }
+            />
+            
+            {/* Driver Routes */}
+            <Route
+              path="/driver/dashboard"
+              element={
+                <ProtectedRoute requiredRole="driver">
+                  <DriverDashboard />
                 </ProtectedRoute>
               }
             />
@@ -45,6 +67,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
