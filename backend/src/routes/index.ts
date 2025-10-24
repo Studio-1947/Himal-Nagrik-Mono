@@ -1,11 +1,51 @@
 ﻿import type { Application } from 'express';
 import { Router } from 'express';
+import jwt, { type JwtPayload } from 'jsonwebtoken';
 
 import { env } from '../config/env';
 import { version } from '../../package.json';
 import { authRouter } from './auth';
+import { bookingRouter } from './booking';
+import { pool } from '../config/database';
 
 const router = Router();
+
+// Authentication middleware
+const authenticateRequest = async (req: any, res: any, next: any): Promise<void> => {
+  const header = req.headers.authorization;
+  if (!header || !header.toLowerCase().startsWith('bearer ')) {
+    res.status(401).json({ message: 'Missing or invalid authorization header' });
+    return;
+  }
+
+  const token = header.slice(7).trim();
+  if (!token) {
+    res.status(401).json({ message: 'Missing authorization token' });
+    return;
+  }
+
+  try {
+    const payload = jwt.verify(token, env.jwtSecret) as JwtPayload;
+    const userId = typeof payload.sub === 'string' ? payload.sub : null;
+    if (!userId) {
+      res.status(401).json({ message: 'Invalid token payload' });
+      return;
+    }
+
+    const { rows } = await pool.query('SELECT * FROM app_users WHERE id = $1', [userId]);
+    if (rows.length === 0) {
+      res.status(401).json({ message: 'User not found' });
+      return;
+    }
+
+    req.user = rows[0];
+    req.token = token;
+    next();
+  } catch (error) {
+    console.error('Failed to verify token', error);
+    res.status(401).json({ message: 'Authentication failed' });
+  }
+};
 
 const renderHomePage = (): string => `<!DOCTYPE html>
 <html lang="en">
@@ -79,14 +119,15 @@ const renderHomePage = (): string => `<!DOCTYPE html>
 </head>
 <body>
   <main class="card">
-    <div class="badge">Backend Online</div>
-    <h1>Himal Nagrik API</h1>
+    <div class="badge">Cab Booking API Online</div>
+    <h1>Himal Nagrik Taxi API</h1>
     <p>Version <strong>${version}</strong></p>
     <div class="grid">
       <p>Running on port <strong>${env.port}</strong></p>
       <p>Environment: <strong>${env.nodeEnv}</strong></p>
     </div>
     <p>Explore the API health check at <a href="${env.apiPrefix}/health">${env.apiPrefix}/health</a></p>
+    <p>Book your ride today!</p>
   </main>
 </body>
 </html>`;
@@ -102,7 +143,7 @@ type HealthResponse = {
 router.get<unknown, HealthResponse>('/health', (_req, res) => {
   res.json({
     status: 'ok',
-    message: 'API is healthy',
+    message: 'Cab Booking API is healthy',
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
     environment: env.nodeEnv,
@@ -110,6 +151,7 @@ router.get<unknown, HealthResponse>('/health', (_req, res) => {
 });
 
 router.use('/auth', authRouter);
+router.use('/bookings', authenticateRequest, bookingRouter);
 
 export const registerRoutes = (app: Application, prefix = '/api'): void => {
   app.get('/', (_req, res) => {

@@ -1,252 +1,254 @@
-﻿import { useState } from "react";
+﻿import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { RouteSelector } from "@/components/RouteSelector";
-import { TaxiAvailability } from "@/components/TaxiAvailability";
-import { BookingConfirmation } from "@/components/BookingConfirmation";
-import type { BookingData } from "@/components/BookingConfirmation";
-import { BookingSuccess } from "@/components/BookingSuccess";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-// import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Car, Users, Star, ArrowLeft } from "lucide-react";
+import { MapPin, Car, Users, Star, ArrowRight, Clock } from "lucide-react";
 import heroTaxiImage from "@/assets/hero-taxi.jpg";
 
-type Step = "route" | "availability" | "booking" | "success";
-
-interface Route {
-  from: string;
-  to: string;
-  duration: string;
-  fare: string;
-}
-
-interface Taxi {
-  id: string;
-  driverName: string;
-  vehicleNumber: string;
-  seatsAvailable: number;
-  totalSeats: number;
-  departureTime: string;
-  rating: number;
-  phone: string;
-  status: "filling" | "ready" | "departed";
-}
-
 const Index = () => {
-  const { isAuthenticated, role, profile } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
-  const [currentStep, setCurrentStep] = useState<Step>("route");
-  const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
-  const [selectedTaxi, setSelectedTaxi] = useState<Taxi | null>(null);
-  const [bookingData, setBookingData] = useState<BookingData | null>(null);
 
-  const handleRouteSelect = (route: Route) => {
-    setSelectedRoute(route);
-    setCurrentStep("availability");
-  };
-
-  const handleTaxiSelect = (taxi: Taxi) => {
-    setSelectedTaxi(taxi);
-    setCurrentStep("booking");
-  };
-
-  const handleBookingConfirm = (data: BookingData) => {
-    setBookingData(data);
-    setCurrentStep("success");
-  };
-
-  const handleNewBooking = () => {
-    setCurrentStep("route");
-    setSelectedRoute(null);
-    setSelectedTaxi(null);
-    setBookingData(null);
-  };
-
-  const goToDashboard = () => {
-    if (!isAuthenticated) {
-      navigate("/login");
-      return;
+  // Redirect authenticated users to their respective dashboards
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      if (user.role === 'passenger') {
+        navigate('/passenger/dashboard');
+      } else if (user.role === 'driver') {
+        navigate('/driver/dashboard');
+      }
     }
-    navigate(role === "driver" ? "/driver/profile" : "/passenger/profile");
-  };
+  }, [isAuthenticated, user, navigate]);
 
   const goToDriverLogin = () => navigate("/driver/login");
   const goToPassengerLogin = () => navigate("/login");
+  const goToDriverSignup = () => navigate("/driver/signup");
+  const goToPassengerSignup = () => navigate("/signup");
 
-  const goBack = () => {
-    switch (currentStep) {
-      case "availability":
-        setCurrentStep("route");
-        break;
-      case "booking":
-        setCurrentStep("availability");
-        break;
-      case "success":
-        setCurrentStep("route");
-        break;
-    }
-  };
+  // Don't show anything while redirecting authenticated users
+  if (isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="container mx-auto flex items-center justify-between px-4 py-6 text-white">
+      <header className="container mx-auto flex items-center justify-between px-4 py-6">
         <div className="space-y-1">
           <span className="text-xs uppercase tracking-[0.35em] text-black/60">
             Himal Nagrik
           </span>
           <p className="text-lg font-semibold text-black/60">
-            Shared journeys of Darjeeling
+            Your trusted taxi booking service
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {isAuthenticated ? (
-            <>
-              <span className="hidden text-sm text-black/70 sm:inline">
-                Hi, {profile?.name.split(" ")[0] ?? "traveller"}
-              </span>
-              <Button
-                variant="outline"
-                className="border-black/20 bg-black/10 text-black hover:bg-black/20"
-                onClick={goToDashboard}
-              >
-                My dashboard
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button
-                variant="ghost"
-                className="text-black hover:bg-white/10"
-                onClick={goToDriverLogin}
-              >
-                Driver login
-              </Button>
-              <Button
-                className="bg-gradient-to-r from-sky-500 via-emerald-500 to-emerald-400 text-white shadow-emerald-500/30 hover:opacity-90"
-                onClick={goToPassengerLogin}
-              >
-                Passenger login
-              </Button>
-            </>
-          )}
+          <Button
+            variant="ghost"
+            className="text-black hover:bg-white/10"
+            onClick={goToDriverLogin}
+          >
+            Driver Login
+          </Button>
+          <Button
+            className="bg-gradient-to-r from-sky-500 via-emerald-500 to-emerald-400 text-white shadow-emerald-500/30 hover:opacity-90"
+            onClick={goToPassengerLogin}
+          >
+            Book a Ride
+          </Button>
         </div>
       </header>
+
       {/* Hero Section */}
-      <div className="relative h-64 md:h-80 overflow-hidden">
+      <div className="relative h-96 md:h-[500px] overflow-hidden">
         <img
           src={heroTaxiImage}
-          alt="Taxi in Darjeeling mountains"
+          alt="Taxi service in beautiful mountains"
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-black/60" />
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center text-white space-y-4">
-            <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
-              Darjeeling Taxi
+          <div className="text-center text-white space-y-6 max-w-4xl mx-auto px-4">
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
+              Himal Nagrik Taxi
             </h1>
-            <p className="text-lg md:text-xl text-white/90 max-w-2xl mx-auto px-4">
-              Book shared taxis across the beautiful hills of Darjeeling
+            <p className="text-xl md:text-2xl text-white/90 max-w-3xl mx-auto">
+              Safe, reliable, and convenient taxi booking service. 
+              Book your ride in minutes and travel with confidence.
             </p>
-            <div className="flex items-center justify-center gap-4 text-sm">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+              <Button
+                size="lg"
+                className="bg-white text-black hover:bg-white/90 font-semibold px-8 py-4 text-lg"
+                onClick={goToPassengerSignup}
+              >
+                Book Your First Ride
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-white text-white hover:bg-white hover:text-black font-semibold px-8 py-4 text-lg"
+                onClick={goToDriverSignup}
+              >
+                Become a Driver
+              </Button>
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-4 text-sm pt-6">
               <Badge
                 variant="secondary"
                 className="bg-white/10 text-white border-white/20"
               >
                 <MapPin className="h-3 w-3 mr-1" />
-                15+ Routes
+                GPS Tracking
               </Badge>
               <Badge
                 variant="secondary"
                 className="bg-white/10 text-white border-white/20"
               >
                 <Car className="h-3 w-3 mr-1" />
-                50+ Taxis
+                Multiple Vehicle Types
               </Badge>
               <Badge
                 variant="secondary"
                 className="bg-white/10 text-white border-white/20"
               >
-                <Users className="h-3 w-3 mr-1" />
-                1000+ Passengers
+                <Clock className="h-3 w-3 mr-1" />
+                24/7 Service
+              </Badge>
+              <Badge
+                variant="secondary"
+                className="bg-white/10 text-white border-white/20"
+              >
+                <Star className="h-3 w-3 mr-1" />
+                Rated Drivers
               </Badge>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Navigation */}
-      {currentStep !== "route" && (
-        <div className="container mx-auto px-4 py-4">
-          <Button variant="ghost" onClick={goBack} className="mb-4">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
+      {/* Features Section */}
+      <div className="container mx-auto px-4 py-16">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">Why Choose Us?</h2>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Experience the best taxi booking service with modern features and reliable drivers
+          </p>
         </div>
-      )}
 
-      {/* Main Content */}
-      <div className="container mx-auto px-4 py-8">
-        {currentStep === "route" && (
-          <RouteSelector onRouteSelect={handleRouteSelect} />
-        )}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="text-center space-y-4">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+              <MapPin className="h-8 w-8 text-primary" />
+            </div>
+            <h3 className="text-xl font-semibold">Real-time Tracking</h3>
+            <p className="text-muted-foreground">
+              Track your ride in real-time and share your location with family and friends
+            </p>
+          </div>
 
-        {currentStep === "availability" && selectedRoute && (
-          <TaxiAvailability
-            route={selectedRoute}
-            onBookSeat={handleTaxiSelect}
-          />
-        )}
+          <div className="text-center space-y-4">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+              <Star className="h-8 w-8 text-primary" />
+            </div>
+            <h3 className="text-xl font-semibold">Rated Drivers</h3>
+            <p className="text-muted-foreground">
+              All our drivers are verified and rated by passengers for your safety
+            </p>
+          </div>
 
-        {currentStep === "booking" && selectedTaxi && selectedRoute && (
-          <BookingConfirmation
-            taxi={selectedTaxi}
-            route={selectedRoute}
-            onConfirmBooking={handleBookingConfirm}
-          />
-        )}
+          <div className="text-center space-y-4">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+              <Car className="h-8 w-8 text-primary" />
+            </div>
+            <h3 className="text-xl font-semibold">Multiple Options</h3>
+            <p className="text-muted-foreground">
+              Choose from standard cars, premium vehicles, SUVs, or shared rides
+            </p>
+          </div>
 
-        {currentStep === "success" && bookingData && (
-          <BookingSuccess
-            bookingData={bookingData}
-            onNewBooking={handleNewBooking}
-          />
-        )}
+          <div className="text-center space-y-4">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+              <Clock className="h-8 w-8 text-primary" />
+            </div>
+            <h3 className="text-xl font-semibold">24/7 Available</h3>
+            <p className="text-muted-foreground">
+              Book rides anytime, anywhere. Our service is available round the clock
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Call to Action */}
+      <div className="bg-muted/30 py-16">
+        <div className="container mx-auto px-4 text-center">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Get Started?</h2>
+          <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
+            Join thousands of satisfied customers who trust us for their daily commute
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Button
+              size="lg"
+              className="bg-primary text-white hover:bg-primary/90 font-semibold px-8 py-4"
+              onClick={goToPassengerSignup}
+            >
+              Sign Up as Passenger
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="font-semibold px-8 py-4"
+              onClick={goToDriverSignup}
+            >
+              Join as Driver
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Footer */}
-      <footer className="bg-muted/30 border-t mt-16">
-        <div className="container mx-auto px-4 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <footer className="bg-muted/30 border-t">
+        <div className="container mx-auto px-4 py-12">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="space-y-4">
-              <h3 className="font-semibold text-lg">Darjeeling Taxi</h3>
+              <h3 className="font-semibold text-lg">Himal Nagrik Taxi</h3>
               <p className="text-sm text-muted-foreground">
-                Connecting you with shared taxis across the beautiful hills of
-                Darjeeling. Safe, reliable, and community-driven transport.
+                Your trusted partner for safe and reliable transportation. 
+                Connecting passengers with professional drivers across the city.
               </p>
             </div>
             <div className="space-y-4">
-              <h4 className="font-semibold">Popular Routes</h4>
+              <h4 className="font-semibold">For Passengers</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>Darjeeling - Mirik</li>
-                <li>Siliguri - Darjeeling</li>
-                <li>Kurseong - Darjeeling</li>
-                <li>Kalimpong - Darjeeling</li>
+                <li><button onClick={goToPassengerSignup} className="hover:text-primary">Sign Up</button></li>
+                <li><button onClick={goToPassengerLogin} className="hover:text-primary">Login</button></li>
+                <li>Book a Ride</li>
+                <li>Safety Features</li>
               </ul>
             </div>
             <div className="space-y-4">
-              <h4 className="font-semibold">Contact</h4>
+              <h4 className="font-semibold">For Drivers</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><button onClick={goToDriverSignup} className="hover:text-primary">Join as Driver</button></li>
+                <li><button onClick={goToDriverLogin} className="hover:text-primary">Driver Login</button></li>
+                <li>Driver Requirements</li>
+                <li>Earnings Info</li>
+              </ul>
+            </div>
+            <div className="space-y-4">
+              <h4 className="font-semibold">Support</h4>
               <div className="space-y-2 text-sm text-muted-foreground">
                 <p>Phone: +91 98765 43210</p>
-                <p>Email: hello@darjeeling-taxi.com</p>
-                <p>Office: Chowk Bazaar, Darjeeling</p>
+                <p>Email: support@himalnagrik.com</p>
+                <p>Help Center</p>
+                <p>Terms & Conditions</p>
               </div>
             </div>
           </div>
           <div className="border-t mt-8 pt-8 text-center text-sm text-muted-foreground">
             <p>
-              &copy; 2024 Darjeeling Taxi. Connecting communities across the
-              hills.
+              &copy; 2024 Himal Nagrik Taxi. Safe rides, trusted drivers, satisfied customers.
             </p>
           </div>
         </div>
