@@ -31,6 +31,8 @@ export const env = {
   port: parsePort(getEnv('PORT', '5000')),
   apiPrefix: getEnv('API_PREFIX', '/api'),
   databaseUrl: getEnv('DATABASE_URL'),
+  jwtSecret: getEnv('JWT_SECRET', 'dev-secret'),
+  jwtExpiresIn: getEnv('JWT_EXPIRES_IN', '1h'),
 };
 
 export const isProduction = env.nodeEnv === 'production';

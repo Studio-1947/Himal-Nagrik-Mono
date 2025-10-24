@@ -119,7 +119,18 @@ interface ApiLoginResponse {
   profile: AuthProfile;
 }
 
-const USE_AUTH_MOCKS = import.meta.env.VITE_USE_AUTH_MOCKS !== "false";
+const shouldUseMocks = () => {
+  const raw = import.meta.env.VITE_USE_AUTH_MOCKS;
+  if (raw === undefined || raw === null) {
+    return false;
+  }
+
+  const normalized = String(raw).trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes";
+};
+
+const USE_AUTH_MOCKS = shouldUseMocks();
+export const AUTH_MOCKS_ENABLED = USE_AUTH_MOCKS;
 
 const deepClone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
 

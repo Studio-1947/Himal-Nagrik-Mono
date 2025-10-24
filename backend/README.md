@@ -5,6 +5,7 @@ TypeScript + Express starter API that pairs with the Himal Nagrik frontend.
 ## Features
 - Express server with security and logging middleware (Helmet, CORS, Morgan)
 - Typed environment configuration with sensible defaults
+- User authentication routes with hashed passwords and JWT-based sessions
 - Health-check endpoint available at `/api/health`
 - PostgreSQL connection bootstrap via environment-driven configuration
 - Ready-to-use development (`npm run dev`) and production build (`npm run build && npm start`) scripts
@@ -21,7 +22,7 @@ cp .env.example .env
 Copy-Item .env.example .env
 ```
 
-Update `.env` with your actual settings, especially `DATABASE_URL` (Neon connection string shown in the example) and then run:
+Update `.env` with your actual settings—be sure to provide a strong `DATABASE_URL` and `JWT_SECRET` (the fallback in `.env.example` is for local development only)—and then run:
 
 ```bash
 npm run dev
@@ -32,9 +33,10 @@ The API will start on `http://localhost:5000` by default.
 ## Deployment (Vercel)
 1. Install the Vercel CLI if needed: `npm i -g vercel`
 2. Log in and link the project: `vercel login` then `vercel link`
-3. Configure required environment variables in Vercel (`DATABASE_URL`, `NODE_ENV`, `API_PREFIX`, `PORT` if overriding) using:
+3. Configure required environment variables in Vercel (`DATABASE_URL`, `NODE_ENV`, `API_PREFIX`, `JWT_SECRET`, `PORT` if overriding) using:
    - `vercel env add DATABASE_URL production`
-   - repeat for other environments/variables as necessary
+   - `vercel env add JWT_SECRET production`
+   - repeat for other environments/variables as necessary (include `JWT_EXPIRES_IN` if you override the default)
 4. Deploy: `vercel` for preview, `vercel --prod` for production.
 
 The `vercel.json` file rewrites all incoming requests to the Express app served by `api/index.ts`, so the backend behaves the same as local `/` routes while running on Vercel's Node.js 20 runtime.

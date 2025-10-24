@@ -17,7 +17,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import type { AuthRole, AuthSession } from "@/lib/auth-service";
+import {
+  AUTH_MOCKS_ENABLED,
+  type AuthRole,
+  type AuthSession,
+} from "@/lib/auth-service";
 import { cn } from "@/lib/utils";
 
 const loginSchema = z.object({
@@ -82,10 +86,17 @@ export const LoginForm = ({ role, onSuccess, className }: LoginFormProps) => {
     }
   };
 
-  const demoCredentials =
-    role === "driver"
+  const demoCredentials = AUTH_MOCKS_ENABLED
+    ? role === "driver"
       ? { identifier: "karma.driver@himal.app", password: "himal999" }
-      : { identifier: "pema.passenger@himal.app", password: "himal123" };
+      : { identifier: "pema.passenger@himal.app", password: "himal123" }
+    : undefined;
+
+  const identifierPlaceholder = demoCredentials
+    ? demoCredentials.identifier
+    : role === "driver"
+      ? "driver@yourfleet.com"
+      : "you@example.com";
 
   return (
     <div className={cn("space-y-6", className)}>
@@ -102,7 +113,7 @@ export const LoginForm = ({ role, onSuccess, className }: LoginFormProps) => {
                     <div className="relative">
                       <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
                       <Input
-                        placeholder={demoCredentials.identifier}
+                        placeholder={identifierPlaceholder}
                         className="pl-10 text-black"
                         autoComplete="username"
                         {...field}
@@ -193,18 +204,39 @@ export const LoginForm = ({ role, onSuccess, className }: LoginFormProps) => {
       </Form>
 
       <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-200/90">
-        <p className="text-xs uppercase tracking-[0.3em] text-white/50">
-          Demo credentials
-        </p>
-        <div className="mt-2 flex flex-col gap-1 text-xs text-slate-300">
-          <span>
-            {demoCredentials.identifier} /{" "}
-            <span className="font-semibold text-slate-100">
-              {demoCredentials.password}
-            </span>
-          </span>
-          <span>Use the demo account to explore the experience instantly.</span>
-        </div>
+        {demoCredentials ? (
+          <>
+            <p className="text-xs uppercase tracking-[0.3em] text-white/50">
+              Demo credentials
+            </p>
+            <div className="mt-2 flex flex-col gap-1 text-xs text-slate-300">
+              <span>
+                {demoCredentials.identifier} /{" "}
+                <span className="font-semibold text-slate-100">
+                  {demoCredentials.password}
+                </span>
+              </span>
+              <span>
+                Use the demo account to explore the experience instantly.
+              </span>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="text-xs uppercase tracking-[0.3em] text-white/50">
+              Sign-in tip
+            </p>
+            <div className="mt-2 flex flex-col gap-1 text-xs text-slate-300">
+              <span>
+                Enter the email or phone number you used when creating your
+                Himal Nagrik account.
+              </span>
+              <span>
+                Need an account? Use the sign-up link above to get started.
+              </span>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="flex items-center justify-center gap-4 text-xs uppercase tracking-[0.35em] text-white/40">

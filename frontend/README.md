@@ -60,6 +60,13 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
+## Environment
+
+The frontend expects the Himal Nagrik backend to be running and exposes two env vars in `.env.development` / `.env.production`:
+
+- `VITE_API_BASE_URL` points to the backend API (defaults to `http://localhost:5000/api` for local dev).
+- `VITE_USE_AUTH_MOCKS` is set to `false` so login/sign-up flows use the live backend; flip it to `true` if you need the original mock mode.
+
 ## How can I deploy this project?
 
 Simply open [Lovable](https://lovable.dev/projects/8f63d28d-994d-4e56-9802-1047f301a1f3) and click on Share -> Publish.

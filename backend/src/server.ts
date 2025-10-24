@@ -3,6 +3,7 @@
 import { createApp } from './app';
 import { env } from './config/env';
 import { ensureDatabaseConnection, closeDatabasePool } from './config/database';
+import { runMigrations } from './db/migrations';
 
 const app = createApp();
 const server = createServer(app);
@@ -10,6 +11,7 @@ const server = createServer(app);
 const start = async (): Promise<void> => {
   try {
     await ensureDatabaseConnection();
+    await runMigrations();
   } catch (error) {
     console.error('Failed to connect to the database');
     console.error(error);

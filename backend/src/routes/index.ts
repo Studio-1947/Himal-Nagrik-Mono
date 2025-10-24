@@ -3,6 +3,7 @@ import { Router } from 'express';
 
 import { env } from '../config/env';
 import { version } from '../../package.json';
+import { authRouter } from './auth';
 
 const router = Router();
 
@@ -107,6 +108,8 @@ router.get<unknown, HealthResponse>('/health', (_req, res) => {
     environment: env.nodeEnv,
   });
 });
+
+router.use('/auth', authRouter);
 
 export const registerRoutes = (app: Application, prefix = '/api'): void => {
   app.get('/', (_req, res) => {
