@@ -15,6 +15,7 @@ interface BaseProfile {
 
 export interface PassengerProfile extends BaseProfile {
   role: "passenger";
+  savedLocations?: PassengerSavedLocation[];
   emergencyContact?: {
     name: string;
     phone: string;
@@ -54,7 +55,9 @@ export interface DriverProfile extends BaseProfile {
   availability: {
     weekdays: string[];
     shift: "morning" | "day" | "evening" | "night";
+    isActive?: boolean;
   };
+  documents?: DriverDocument[];
 }
 
 export type AuthProfile = PassengerProfile | DriverProfile;
@@ -102,6 +105,7 @@ export type PassengerProfileUpdate = Partial<
   Omit<PassengerProfile, "id" | "role">
 > & {
   role: "passenger";
+  savedLocations?: never;
 };
 
 export type DriverProfileUpdate = Partial<
@@ -117,6 +121,31 @@ interface ApiLoginResponse {
   refreshToken?: string;
   expiresAt?: string;
   profile: AuthProfile;
+}
+
+export interface PassengerSavedLocation {
+  id: string;
+  label: string;
+  address: string;
+  location: {
+    latitude: number;
+    longitude: number;
+    placeId?: string;
+    description?: string;
+  };
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DriverDocument {
+  id: string;
+  documentType: string;
+  status: "pending" | "approved" | "rejected" | "expired";
+  metadata: Record<string, unknown> | null;
+  submittedAt: string;
+  verifiedAt: string | null;
+  rejectionReason: string | null;
 }
 
 const shouldUseMocks = () => {
