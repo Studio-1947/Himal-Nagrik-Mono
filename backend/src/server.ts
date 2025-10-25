@@ -4,6 +4,9 @@ import { createApp } from './app';
 import { env } from './config/env';
 import { ensureDatabaseConnection, closeDatabasePool } from './config/database';
 import { runMigrations } from './db/migrations';
+import { connectRedis, disconnectRedis } from './infra/cache/redis';
+import { startRealtimeGateway, stopRealtimeGateway } from './infra/realtime';
+import { startDispatchWorker, stopDispatchWorker } from './modules/dispatch/dispatch.worker';
 
 const app = createApp();
 const server = createServer(app);
@@ -12,6 +15,13 @@ const start = async (): Promise<void> => {
   try {
     await ensureDatabaseConnection();
     await runMigrations();
+    const redis = await connectRedis();
+    if (redis) {
+      startDispatchWorker();
+    } else {
+      console.warn('[startup] Dispatch worker disabled; Redis not available');
+    }
+    startRealtimeGateway(server);
   } catch (error) {
     console.error('Failed to connect to the database');
     console.error(error);
@@ -26,6 +36,9 @@ const start = async (): Promise<void> => {
 
 const shutdown = async (): Promise<void> => {
   try {
+    stopDispatchWorker();
+    stopRealtimeGateway();
+    await disconnectRedis();
     await closeDatabasePool();
     console.log('Database pool closed');
   } catch (error) {

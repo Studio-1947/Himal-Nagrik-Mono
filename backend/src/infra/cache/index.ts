@@ -14,6 +14,6 @@ export const getRedisClient = (): RedisClientType | null => redisClient;
  * setter in place lets us initialise the cache in server startup without
  * refactoring call sites.
  */
-export const setRedisClient = (client: RedisClientType): void => {
+export const setRedisClient = (client: RedisClientType | null): void => {
   redisClient = client;
 };
