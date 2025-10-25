@@ -33,6 +33,7 @@ export const env = {
   databaseUrl: getEnv('DATABASE_URL'),
   jwtSecret: getEnv('JWT_SECRET', 'dev-secret'),
   jwtExpiresIn: getEnv('JWT_EXPIRES_IN', '1h'),
+  redisUrl: process.env.REDIS_URL ?? '',
 };
 
 export const isProduction = env.nodeEnv === 'production';

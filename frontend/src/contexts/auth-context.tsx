@@ -17,7 +17,10 @@ import {
   type LoginPayload,
   type RegisterPayload,
   type PassengerProfileUpdate,
+  AUTH_MOCKS_ENABLED,
 } from "@/lib/auth-service";
+import { passengerService } from "@/lib/passenger-service";
+import { driverService } from "@/lib/driver-service";
 
 const STORAGE_KEY = "himal-nagrik-auth-session";
 
@@ -92,14 +95,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setStatus(session ? "authenticated" : "unauthenticated");
   }, [session]);
 
+  const hydrateSession = useCallback(
+    async (incoming: AuthSession): Promise<AuthSession> => {
+      if (AUTH_MOCKS_ENABLED) {
+        return incoming;
+      }
+
+      if (incoming.profile.role === "passenger") {
+        const enriched = await passengerService.getProfile(incoming.token);
+        return { ...incoming, profile: enriched };
+      }
+
+      if (incoming.profile.role === "driver") {
+        const enriched = await driverService.getProfile(incoming.token);
+        return { ...incoming, profile: enriched };
+      }
+
+      return incoming;
+    },
+    []
+  );
+
   const login = useCallback(
     async (payload: LoginPayload): Promise<LoginResult> => {
       setIsPending(true);
       setError(null);
       try {
         const nextSession = await authService.login(payload);
-        setSession(nextSession);
-        return { session: nextSession };
+        const hydratedSession = await hydrateSession(nextSession);
+        setSession(hydratedSession);
+        return { session: hydratedSession };
       } catch (caughtError) {
         const message =
           caughtError instanceof Error
@@ -112,7 +137,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsPending(false);
       }
     },
-    []
+    [hydrateSession]
   );
 
   const register = useCallback(
@@ -121,8 +146,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setError(null);
       try {
         const nextSession = await authService.register(payload);
-        setSession(nextSession);
-        return { session: nextSession };
+        const hydratedSession = await hydrateSession(nextSession);
+        setSession(hydratedSession);
+        return { session: hydratedSession };
       } catch (caughtError) {
         const message =
           caughtError instanceof Error
@@ -135,7 +161,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsPending(false);
       }
     },
-    []
+    [hydrateSession]
   );
 
   const logout = useCallback(async (): Promise<void> => {
@@ -158,7 +184,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsPending(true);
     setError(null);
     try {
-      const profile = await authService.fetchProfile(session.token);
+      let profile: AuthProfile;
+      if (!AUTH_MOCKS_ENABLED && session.profile.role === "passenger") {
+        profile = await passengerService.getProfile(session.token);
+      } else if (!AUTH_MOCKS_ENABLED && session.profile.role === "driver") {
+        profile = await driverService.getProfile(session.token);
+      } else {
+        profile = await authService.fetchProfile(session.token);
+      }
       setSession((current) => (current ? { ...current, profile } : current));
       return profile;
     } catch (caughtError) {
@@ -183,7 +216,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsPending(true);
       setError(null);
       try {
-        const profile = await authService.updateProfile(session.token, updates);
+        let profile: AuthProfile;
+        if (!AUTH_MOCKS_ENABLED && updates.role === "passenger") {
+          profile = await passengerService.updateProfile(session.token, updates);
+        } else if (!AUTH_MOCKS_ENABLED && updates.role === "driver") {
+          profile = await driverService.updateProfile(session.token, updates);
+        } else {
+          profile = await authService.updateProfile(session.token, updates);
+        }
         setSession((current) => (current ? { ...current, profile } : current));
         return { profile };
       } catch (caughtError) {

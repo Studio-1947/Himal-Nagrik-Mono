@@ -160,6 +160,7 @@ const PassengerProfilePage = () => {
   const completedTrips = profile.recentTrips.filter(
     (trip) => trip.status === "completed"
   ).length;
+  const savedLocations = profile.savedLocations ?? [];
 
   return (
     <div className="relative min-h-screen bg-slate-950 text-slate-100">
@@ -434,6 +435,51 @@ const PassengerProfilePage = () => {
                   </Button>
                 </form>
               </Form>
+            </div>
+
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-white">
+                  Saved pickup points
+                </h3>
+                <Badge className="bg-emerald-500/15 text-emerald-200">
+                  {savedLocations.length} saved
+                </Badge>
+              </div>
+              <p className="mt-1 text-sm text-slate-300">
+                Keep your frequent boarding spots handy for quicker bookings.
+              </p>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {savedLocations.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-white/15 bg-white/5 p-4 text-sm text-slate-300">
+                    No saved locations yet. Add your home, work, or favourite
+                    stop from the mobile app to get started.
+                  </div>
+                ) : (
+                  savedLocations.map((location) => (
+                    <div
+                      key={location.id}
+                      className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                    >
+                      <div className="flex items-center justify-between text-sm text-slate-200">
+                        <span className="inline-flex items-center gap-2 font-medium text-white">
+                          <MapPin className="h-4 w-4 text-emerald-300" />
+                          {location.label}
+                        </span>
+                        {location.isDefault ? (
+                          <Badge className="bg-emerald-500/15 text-emerald-200">
+                            Default
+                          </Badge>
+                        ) : null}
+                      </div>
+                      <p className="mt-2 text-xs text-slate-300">
+                        {location.address}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </section>
 

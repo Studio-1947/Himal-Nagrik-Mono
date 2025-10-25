@@ -35,9 +35,7 @@ const PassengerLoginPage = () => {
 
   const handleSuccess = (session: AuthSession) => {
     const fallback =
-      session.profile.role === "driver"
-        ? "/driver/profile"
-        : "/passenger/profile";
+      session.profile.role === "driver" ? "/driver/profile" : "/";
     navigate(from ?? fallback, { replace: true });
   };
 

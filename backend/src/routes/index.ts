@@ -3,7 +3,7 @@ import { Router } from 'express';
 
 import { env } from '../config/env';
 import { version } from '../../package.json';
-import { authRouter } from './auth';
+import { attachModules } from '../modules';
 
 const router = Router();
 
@@ -109,7 +109,7 @@ router.get<unknown, HealthResponse>('/health', (_req, res) => {
   });
 });
 
-router.use('/auth', authRouter);
+attachModules(router);
 
 export const registerRoutes = (app: Application, prefix = '/api'): void => {
   app.get('/', (_req, res) => {
