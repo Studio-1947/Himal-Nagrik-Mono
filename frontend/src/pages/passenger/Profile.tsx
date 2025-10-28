@@ -29,6 +29,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { usePassengerDashboard } from "@/hooks/use-passenger-dashboard";
+import { PassengerDashboard } from "@/features/passenger/dashboard/PassengerDashboard";
 
 const passengerSettingsSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters" }),
@@ -51,6 +53,13 @@ type PassengerSettingsValues = z.infer<typeof passengerSettingsSchema>;
 
 const PassengerProfilePage = () => {
   const { profile, updateProfile, isPending, logout } = useAuth();
+  const {
+    summary: dashboardSummary,
+    isLoading: isDashboardLoading,
+    isRefreshing: isDashboardRefreshing,
+    refresh: refreshDashboard,
+    setFocus: setDashboardFocus,
+  } = usePassengerDashboard();
   const navigate = useNavigate();
   const formValues = useMemo<PassengerSettingsValues>(() => {
     if (profile?.role === "passenger") {
@@ -230,6 +239,17 @@ const PassengerProfilePage = () => {
 
         <main className="mt-10 grid gap-10 lg:grid-cols-[2fr,1fr]">
           <section className="space-y-8">
+            {dashboardSummary ? (
+              <PassengerDashboard
+                summary={dashboardSummary}
+                onRefresh={refreshDashboard}
+                isRefreshing={isDashboardRefreshing}
+                onSetFocus={setDashboardFocus}
+              />
+            ) : isDashboardLoading ? (
+              <div className="h-80 animate-pulse rounded-3xl border border-white/10 bg-white/5" />
+            ) : null}
+
             <div className="rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur-xl">
               <h2 className="text-lg font-semibold text-white">
                 Update your preferences

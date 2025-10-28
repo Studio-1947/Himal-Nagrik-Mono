@@ -11,8 +11,10 @@ import {
   heartbeatSchema,
   offerParamsSchema,
   offerActionSchema,
+  nearbyAvailabilityQuerySchema,
   type HeartbeatInput,
   type OfferActionInput,
+  type NearbyAvailabilityQueryInput,
 } from '../dispatch.validation';
 
 type AuthenticatedRequest = Request & { user: DbUser; token: string };
@@ -84,6 +86,48 @@ router.post(
       const { user } = req as AuthenticatedRequest;
       const availability = await dispatchService.registerHeartbeat(user.id, input);
       res.json(availability);
+    } catch (error) {
+      if (!handleErrorResponse(error, res)) {
+        next(error);
+      }
+    }
+  },
+);
+
+router.get(
+  '/availability/nearby',
+  async (req, res, next) => {
+    try {
+      const header = req.headers.authorization;
+      if (!header || !header.toLowerCase().startsWith('bearer ')) {
+        res
+          .status(401)
+          .json({ message: 'Missing or invalid authorization header' });
+        return;
+      }
+
+      const token = header.slice(7).trim();
+      if (!token) {
+        res.status(401).json({ message: 'Missing authorization token' });
+        return;
+      }
+
+      const { user } = await authService.authenticate(token);
+      if (user.role !== 'driver' && user.role !== 'passenger') {
+        res.status(403).json({ message: 'Access restricted to authenticated users' });
+        return;
+      }
+
+      const query = nearbyAvailabilityQuerySchema.parse(
+        req.query,
+      ) as NearbyAvailabilityQueryInput;
+
+      const summary = await dispatchService.getNearbyAvailability(
+        { latitude: query.lat, longitude: query.lng },
+        { radiusKm: query.radiusKm, limit: query.limit },
+      );
+
+      res.json(summary);
     } catch (error) {
       if (!handleErrorResponse(error, res)) {
         next(error);

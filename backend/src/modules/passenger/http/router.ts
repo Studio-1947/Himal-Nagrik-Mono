@@ -8,9 +8,11 @@ import {
   passengerProfilePatchSchema,
   createSavedLocationSchema,
   savedLocationParamsSchema,
+  passengerDashboardQuerySchema,
   type PassengerProfilePatchInput,
   type CreateSavedLocationInput,
   type SavedLocationParamsInput,
+  type PassengerDashboardQueryInput,
 } from '../passenger.validation';
 import { passengerService, PassengerError } from '../passenger.service';
 
@@ -82,6 +84,38 @@ passengerRouter.get(
       const { user } = req as AuthenticatedRequest;
       const profile = await passengerService.getSelfProfile(user.id);
       res.json(profile);
+    } catch (error) {
+      if (!handleErrorResponse(error, res)) {
+        next(error);
+      }
+    }
+  },
+);
+
+passengerRouter.get(
+  '/me/summary',
+  (req, res, next) => {
+    void authenticatePassenger(req, res, next);
+  },
+  async (req, res, next) => {
+    try {
+      const query = passengerDashboardQuerySchema.parse(
+        req.query,
+      ) as PassengerDashboardQueryInput;
+      const { user } = req as AuthenticatedRequest;
+
+      const options = {
+        radiusKm: query.radiusKm,
+        limitDrivers: query.limitDrivers,
+        recentTrips: query.recentTrips,
+        location:
+          query.lat !== undefined && query.lng !== undefined
+            ? { latitude: query.lat, longitude: query.lng }
+            : undefined,
+      };
+
+      const summary = await passengerService.getDashboardSummary(user, options);
+      res.json(summary);
     } catch (error) {
       if (!handleErrorResponse(error, res)) {
         next(error);

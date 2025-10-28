@@ -25,5 +25,22 @@ export const offerActionSchema = z.object({
     .optional(),
 });
 
+export const nearbyAvailabilityQuerySchema = z.object({
+  lat: z.coerce.number().min(-90).max(90),
+  lng: z.coerce.number().min(-180).max(180),
+  radiusKm: z.coerce
+    .number({ invalid_type_error: 'Radius must be numeric' })
+    .min(0.1)
+    .max(25)
+    .default(3),
+  limit: z.coerce
+    .number({ invalid_type_error: 'Limit must be numeric' })
+    .int()
+    .min(1)
+    .max(100)
+    .optional(),
+});
+
 export type HeartbeatInput = z.infer<typeof heartbeatSchema>;
 export type OfferActionInput = z.infer<typeof offerActionSchema>;
+export type NearbyAvailabilityQueryInput = z.infer<typeof nearbyAvailabilityQuerySchema>;

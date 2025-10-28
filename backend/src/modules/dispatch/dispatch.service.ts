@@ -9,11 +9,13 @@ import {
   removeBookingRequest,
 } from '../booking/booking.queue';
 import { mapBookingRecordToResponse } from '../booking/booking.mapper';
-import type { BookingRecord, BookingResponse } from '../booking/booking.types';
+import type { BookingRecord, BookingResponse, LocationPoint } from '../booking/booking.types';
 import type {
   DriverHeartbeatInput,
   DriverAvailability,
   DispatchOffer,
+  DriverAvailabilitySummary,
+  NearbyDriverAvailability,
 } from './dispatch.types';
 
 type InternalOffer = DispatchOffer & {
@@ -24,6 +26,8 @@ type InternalOffer = DispatchOffer & {
 const DRIVER_AVAILABILITY_SET = 'dispatch:drivers:available';
 const OFFER_TTL_SECONDS = 60 * 15;
 const OFFER_TTL_MS = OFFER_TTL_SECONDS * 1000;
+const EARTH_RADIUS_KM = 6371;
+const MAX_DRIVER_SNAPSHOT = 200;
 
 const driverStateKey = (driverId: string): string => `dispatch:drivers:${driverId}`;
 const driverOffersKey = (driverId: string): string => `dispatch:drivers:${driverId}:offers`;
@@ -39,6 +43,36 @@ class DispatchError extends Error {
     this.name = 'DispatchError';
   }
 }
+
+const toRadians = (value: number): number => (value * Math.PI) / 180;
+
+const haversineDistanceKm = (a: LocationPoint, b: LocationPoint): number => {
+  const dLat = toRadians(b.latitude - a.latitude);
+  const dLng = toRadians(b.longitude - a.longitude);
+  const lat1 = toRadians(a.latitude);
+  const lat2 = toRadians(b.latitude);
+
+  const sinLat = Math.sin(dLat / 2);
+  const sinLng = Math.sin(dLng / 2);
+
+  const aHarv =
+    sinLat * sinLat + Math.cos(lat1) * Math.cos(lat2) * sinLng * sinLng;
+  const c = 2 * Math.atan2(Math.sqrt(aHarv), Math.sqrt(1 - aHarv));
+  return EARTH_RADIUS_KM * c;
+};
+
+const estimateEtaMinutes = (distanceKm: number): number => {
+  const averageSpeedKmh = 18; // ~18 km/h average in-city speed
+  const minutes = (distanceKm / averageSpeedKmh) * 60;
+  return Math.max(1, Math.round(minutes));
+};
+
+const clampDriverLimit = (limit?: number): number => {
+  if (!limit || !Number.isFinite(limit)) {
+    return 25;
+  }
+  return Math.min(Math.max(Math.trunc(limit), 1), 100);
+};
 
 const mapInternalOfferToResponse = (offer: InternalOffer): DispatchOffer => ({
   id: offer.id,
@@ -223,6 +257,138 @@ const parseDriverAvailabilityHash = (
     capacity: Number.isFinite(capacity) && capacity > 0 ? capacity : 4,
     lastHeartbeat: Number.isFinite(lastHeartbeat) ? lastHeartbeat : Date.now(),
     location: parseLocation(hash.location),
+  };
+};
+
+const listDriverAvailabilityMemory = (): DriverAvailability[] =>
+  Array.from(driverStates.values());
+
+const listDriverAvailabilityRedis = async (
+  limit?: number,
+): Promise<DriverAvailability[]> => {
+  const redis = getRedisClient();
+  if (!redis) {
+    return listDriverAvailabilityMemory();
+  }
+
+  const driverIds = await redis.zRange(
+    DRIVER_AVAILABILITY_SET,
+    0,
+    -1,
+  );
+
+  const snapshot: DriverAvailability[] = [];
+
+  for (const driverId of driverIds) {
+    if (limit && snapshot.length >= limit) {
+      break;
+    }
+    const hash = await redis.hGetAll(driverStateKey(driverId));
+    if (!hash || Object.keys(hash).length === 0) {
+      await redis.zRem(DRIVER_AVAILABILITY_SET, driverId);
+      continue;
+    }
+    const availability = parseDriverAvailabilityHash(driverId, hash);
+    if (!availability) {
+      await redis.zRem(DRIVER_AVAILABILITY_SET, driverId);
+      continue;
+    }
+    snapshot.push(availability);
+  }
+
+  return snapshot;
+};
+
+const collectDriverAvailabilitySnapshot = async (
+  limit?: number,
+): Promise<DriverAvailability[]> => {
+  const effectiveLimit = limit ?? MAX_DRIVER_SNAPSHOT;
+  const redis = getRedisClient();
+  if (!redis) {
+    return listDriverAvailabilityMemory().slice(0, effectiveLimit);
+  }
+  return listDriverAvailabilityRedis(effectiveLimit);
+};
+
+const buildNearbyDriverSummary = (
+  availability: DriverAvailability,
+  centre: LocationPoint,
+): NearbyDriverAvailability | null => {
+  if (!availability.location) {
+    return null;
+  }
+
+  const distanceKm = haversineDistanceKm(centre, availability.location);
+
+  return {
+    driverId: availability.driverId,
+    location: availability.location,
+    distanceKm: Number(distanceKm.toFixed(2)),
+    etaMinutes: estimateEtaMinutes(distanceKm),
+    capacity: availability.capacity,
+    lastHeartbeat: new Date(availability.lastHeartbeat).toISOString(),
+  };
+};
+
+const listNearbyDriversAvailability = async (
+  centre: LocationPoint | null,
+  radiusKm: number,
+  options?: { limit?: number },
+): Promise<DriverAvailabilitySummary> => {
+  const { limit } = options ?? {};
+  const effectiveLimit = clampDriverLimit(limit);
+  const snapshot = await collectDriverAvailabilitySnapshot(MAX_DRIVER_SNAPSHOT);
+
+  const candidates: NearbyDriverAvailability[] = [];
+
+  for (const availability of snapshot) {
+    if (availability.status !== 'available' || !availability.location) {
+      continue;
+    }
+
+    if (!centre) {
+      candidates.push({
+        driverId: availability.driverId,
+        location: availability.location,
+        distanceKm: 0,
+        etaMinutes: 1,
+        capacity: availability.capacity,
+        lastHeartbeat: new Date(availability.lastHeartbeat).toISOString(),
+      });
+      continue;
+    }
+
+    const summary = buildNearbyDriverSummary(availability, centre);
+    if (!summary) {
+      continue;
+    }
+    if (summary.distanceKm <= radiusKm) {
+      candidates.push(summary);
+    }
+  }
+
+  if (centre) {
+    candidates.sort((a, b) => a.distanceKm - b.distanceKm);
+  } else {
+    candidates.sort((a, b) => b.capacity - a.capacity);
+  }
+
+  const drivers = candidates.slice(0, effectiveLimit);
+
+  const averageEtaMinutes =
+    drivers.length > 0 && centre
+      ? Math.round(
+          drivers.reduce((total, driver) => total + driver.etaMinutes, 0) /
+            drivers.length,
+        )
+      : drivers.length > 0
+      ? 1
+      : null;
+
+  return {
+    drivers,
+    total: candidates.length,
+    averageEtaMinutes,
   };
 };
 
@@ -753,6 +919,21 @@ export const dispatchService = {
         },
       );
     }
+  },
+
+  async getNearbyAvailability(
+    centre: LocationPoint | null,
+    options?: { radiusKm?: number; limit?: number },
+  ): Promise<DriverAvailabilitySummary> {
+    const radius = options?.radiusKm ?? 3;
+    const boundedRadius = Math.min(Math.max(radius, 0.1), 25);
+    return listNearbyDriversAvailability(centre, boundedRadius, {
+      limit: options?.limit,
+    });
+  },
+
+  async listDriverAvailabilitySnapshot(options?: { limit?: number }): Promise<DriverAvailability[]> {
+    return collectDriverAvailabilitySnapshot(options?.limit);
   },
 
   async reapExpiredOffers(options?: { now?: number }): Promise<void> {
