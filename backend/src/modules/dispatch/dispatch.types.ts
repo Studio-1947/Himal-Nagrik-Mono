@@ -19,5 +19,5 @@ export type DispatchOffer = {
   bookingId: string;
   passengerId: string;
   createdAt: string;
-  status: 'pending' | 'accepted' | 'declined';
+  status: 'pending' | 'accepted' | 'declined' | 'expired';
 };

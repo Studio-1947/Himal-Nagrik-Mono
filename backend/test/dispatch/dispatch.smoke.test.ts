@@ -211,15 +211,17 @@ afterEach(async () => {
     return response.body.token as string;
   };
 
-  const registerDriver = async () => {
+  const registerDriver = async (
+    overrides: Partial<{ name: string; email: string; phone: string }> = {},
+  ) => {
     const response = await request(app)
       .post(`${env.apiPrefix}/auth/register`)
       .send({
         role: "driver",
-        name: "Driver One",
-        email: "driver1@example.com",
+        name: overrides.name ?? "Driver One",
+        email: overrides.email ?? "driver1@example.com",
         password: "Driver123",
-        phone: "+11000000222",
+        phone: overrides.phone ?? "+11000000222",
       });
 
     expect(response.status).toBe(201);
@@ -282,5 +284,159 @@ afterEach(async () => {
       .set("Authorization", `Bearer ${driverToken}`);
 
     expect(offersAfterAccept.body).toHaveLength(0);
+  });
+
+  it("reassigns pending bookings when a driver rejects an offer", async () => {
+    const passengerToken = await registerPassenger();
+    const driverOneToken = await registerDriver();
+    const driverTwoToken = await registerDriver({
+      name: "Driver Two",
+      email: "driver2@example.com",
+      phone: "+11000000333",
+    });
+
+    const heartbeatOne = await request(app)
+      .post(`${env.apiPrefix}/dispatch/availability/heartbeat`)
+      .set("Authorization", `Bearer ${driverOneToken}`)
+      .send({
+        status: "available",
+        capacity: 4,
+        location: { latitude: 27.7, longitude: 85.31 },
+      });
+    expect(heartbeatOne.status).toBe(200);
+
+    const heartbeatTwo = await request(app)
+      .post(`${env.apiPrefix}/dispatch/availability/heartbeat`)
+      .set("Authorization", `Bearer ${driverTwoToken}`)
+      .send({
+        status: "available",
+        capacity: 4,
+        location: { latitude: 27.72, longitude: 85.33 },
+      });
+    expect(heartbeatTwo.status).toBe(200);
+
+    const bookingResponse = await request(app)
+      .post(`${env.apiPrefix}/bookings`)
+      .set("Authorization", `Bearer ${passengerToken}`)
+      .send({
+        pickup: { latitude: 27.71, longitude: 85.32 },
+        dropoff: { latitude: 27.69, longitude: 85.28 },
+      });
+
+    expect(bookingResponse.status).toBe(201);
+    const bookingId = bookingResponse.body.id as string;
+
+    const initialOfferResponse = await request(app)
+      .get(`${env.apiPrefix}/dispatch/offers`)
+      .set("Authorization", `Bearer ${driverTwoToken}`);
+
+    expect(initialOfferResponse.status).toBe(200);
+    expect(initialOfferResponse.body).toHaveLength(1);
+    const offerId = initialOfferResponse.body[0].id as string;
+
+    const rejectResponse = await request(app)
+      .post(`${env.apiPrefix}/dispatch/offers/${offerId}/reject`)
+      .set("Authorization", `Bearer ${driverTwoToken}`)
+      .send({ etaMinutes: 12 });
+
+    expect(rejectResponse.status).toBe(204);
+
+    const offersAfterRejectDriverTwo = await request(app)
+      .get(`${env.apiPrefix}/dispatch/offers`)
+      .set("Authorization", `Bearer ${driverTwoToken}`);
+    expect(offersAfterRejectDriverTwo.body).toHaveLength(0);
+
+    const reassignedOfferResponse = await request(app)
+      .get(`${env.apiPrefix}/dispatch/offers`)
+      .set("Authorization", `Bearer ${driverOneToken}`);
+
+    expect(reassignedOfferResponse.status).toBe(200);
+    expect(reassignedOfferResponse.body).toHaveLength(1);
+    const reassignedOfferId = reassignedOfferResponse.body[0].id as string;
+    expect(reassignedOfferId).not.toBe(offerId);
+
+    const bookingStatusResponse = await request(app)
+      .get(`${env.apiPrefix}/bookings/${bookingId}`)
+      .set("Authorization", `Bearer ${passengerToken}`);
+
+    expect(bookingStatusResponse.status).toBe(200);
+    expect(bookingStatusResponse.body.status).toBe("requested");
+  });
+
+  it("expires stale offers and makes the booking available to other drivers", async () => {
+    const passengerToken = await registerPassenger();
+    const driverOneToken = await registerDriver({
+      name: "Driver Alpha",
+      email: "driver.alpha@example.com",
+      phone: "+11000000444",
+    });
+    const driverTwoToken = await registerDriver({
+      name: "Driver Beta",
+      email: "driver.beta@example.com",
+      phone: "+11000000555",
+    });
+
+    const heartbeatAlpha = await request(app)
+      .post(`${env.apiPrefix}/dispatch/availability/heartbeat`)
+      .set("Authorization", `Bearer ${driverOneToken}`)
+      .send({
+        status: "available",
+        capacity: 4,
+        location: { latitude: 27.68, longitude: 85.31 },
+      });
+    expect(heartbeatAlpha.status).toBe(200);
+
+    const heartbeatBeta = await request(app)
+      .post(`${env.apiPrefix}/dispatch/availability/heartbeat`)
+      .set("Authorization", `Bearer ${driverTwoToken}`)
+      .send({
+        status: "available",
+        capacity: 4,
+        location: { latitude: 27.7, longitude: 85.33 },
+      });
+    expect(heartbeatBeta.status).toBe(200);
+
+    const bookingResponse = await request(app)
+      .post(`${env.apiPrefix}/bookings`)
+      .set("Authorization", `Bearer ${passengerToken}`)
+      .send({
+        pickup: { latitude: 27.72, longitude: 85.34 },
+        dropoff: { latitude: 27.66, longitude: 85.3 },
+      });
+
+    expect(bookingResponse.status).toBe(201);
+    const bookingId = bookingResponse.body.id as string;
+
+    const initialOfferResponse = await request(app)
+      .get(`${env.apiPrefix}/dispatch/offers`)
+      .set("Authorization", `Bearer ${driverTwoToken}`);
+
+    expect(initialOfferResponse.status).toBe(200);
+    expect(initialOfferResponse.body).toHaveLength(1);
+    const originalOfferId = initialOfferResponse.body[0].id as string;
+
+    const ttlMs = dispatchService.getOfferTtlMs();
+    const now = Date.now();
+    await dispatchService.reapExpiredOffers({ now: now + ttlMs + 5_000 });
+
+    const offersForBeta = await request(app)
+      .get(`${env.apiPrefix}/dispatch/offers`)
+      .set("Authorization", `Bearer ${driverTwoToken}`);
+    expect(offersForBeta.status).toBe(200);
+    expect(offersForBeta.body).toHaveLength(0);
+
+    const offersForAlpha = await request(app)
+      .get(`${env.apiPrefix}/dispatch/offers`)
+      .set("Authorization", `Bearer ${driverOneToken}`);
+    expect(offersForAlpha.status).toBe(200);
+    expect(offersForAlpha.body).toHaveLength(1);
+    const reassignedOfferId = offersForAlpha.body[0].id as string;
+    expect(reassignedOfferId).not.toBe(originalOfferId);
+
+    const bookingStatus = await request(app)
+      .get(`${env.apiPrefix}/bookings/${bookingId}`)
+      .set("Authorization", `Bearer ${passengerToken}`);
+    expect(bookingStatus.status).toBe(200);
+    expect(bookingStatus.body.status).toBe("requested");
   });
 });

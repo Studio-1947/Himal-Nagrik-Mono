@@ -24,6 +24,8 @@ const processQueue = async (): Promise<void> => {
   processing = true;
 
   try {
+    await dispatchService.reapExpiredOffers();
+
     while (true) {
       const bookingId = await dequeueBookingRequest();
       if (!bookingId) {

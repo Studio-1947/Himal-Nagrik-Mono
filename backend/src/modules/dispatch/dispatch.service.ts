@@ -23,6 +23,7 @@ type InternalOffer = DispatchOffer & {
 
 const DRIVER_AVAILABILITY_SET = 'dispatch:drivers:available';
 const OFFER_TTL_SECONDS = 60 * 15;
+const OFFER_TTL_MS = OFFER_TTL_SECONDS * 1000;
 
 const driverStateKey = (driverId: string): string => `dispatch:drivers:${driverId}`;
 const driverOffersKey = (driverId: string): string => `dispatch:drivers:${driverId}:offers`;
@@ -92,11 +93,14 @@ const registerHeartbeatMemory = (
 const listOffersMemory = (driverId: string): DispatchOffer[] =>
   getDriverOffersBucket(driverId).map(mapInternalOfferToResponse);
 
-const findAvailableDriverMemory = (): DriverAvailability | null => {
+const findAvailableDriverMemory = (
+  exclude?: Set<string>,
+): DriverAvailability | null => {
   const candidates = Array.from(driverStates.values()).filter(
     (driver) =>
       driver.status === 'available' &&
-      getDriverOffersBucket(driver.driverId).length === 0,
+      getDriverOffersBucket(driver.driverId).length === 0 &&
+      !(exclude?.has(driver.driverId) ?? false),
   );
 
   if (candidates.length === 0) {
@@ -155,6 +159,28 @@ const setOfferStatusMemory = (
   status: InternalOffer['status'],
 ): void => {
   offer.status = status;
+};
+
+const getOfferCreatedAt = (offer: InternalOffer): number => {
+  const parsed = Date.parse(offer.createdAt);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const hasOfferExpired = (offer: InternalOffer, cutoff: number): boolean => {
+  const createdAt = getOfferCreatedAt(offer);
+  return createdAt > 0 && createdAt <= cutoff;
+};
+
+const listPendingOffersMemory = (): InternalOffer[] => {
+  const offers: InternalOffer[] = [];
+  for (const bucket of offersByDriver.values()) {
+    for (const offer of bucket) {
+      if (offer.status === 'pending') {
+        offers.push(offer);
+      }
+    }
+  }
+  return offers;
 };
 
 const parseLocation = (value: string | undefined): DriverAvailability['location'] => {
@@ -309,15 +335,21 @@ const listOffersRedis = async (driverId: string): Promise<DispatchOffer[]> => {
   return offers;
 };
 
-const findAvailableDriverRedis = async (): Promise<DriverAvailability | null> => {
+const findAvailableDriverRedis = async (
+  exclude?: Set<string>,
+): Promise<DriverAvailability | null> => {
   const redis = getRedisClient();
   if (!redis) {
-    return findAvailableDriverMemory();
+    return findAvailableDriverMemory(exclude);
   }
 
   const driverIds = await redis.zRange(DRIVER_AVAILABILITY_SET, -20, -1);
   for (let index = driverIds.length - 1; index >= 0; index -= 1) {
     const driverId = driverIds[index];
+    if (exclude?.has(driverId)) {
+      continue;
+    }
+
     const offerCount = await redis.zCard(driverOffersKey(driverId));
     if (offerCount > 0) {
       continue;
@@ -388,6 +420,32 @@ const getOfferRedis = async (offerId: string): Promise<InternalOffer | null> => 
   }
 
   return parseOfferHash(offerId, hash);
+};
+
+const listPendingOffersRedis = async (): Promise<InternalOffer[]> => {
+  const redis = getRedisClient();
+  if (!redis) {
+    return listPendingOffersMemory();
+  }
+
+  const keys = await redis.keys('dispatch:offers:*');
+  if (keys.length === 0) {
+    return [];
+  }
+
+  const offers: InternalOffer[] = [];
+  for (const key of keys) {
+    const offerId = key.split(':').pop();
+    if (!offerId) {
+      continue;
+    }
+    const offer = await getOfferRedis(offerId);
+    if (offer && offer.status === 'pending') {
+      offers.push(offer);
+    }
+  }
+
+  return offers;
 };
 
 const setOfferStatusRedis = async (
@@ -506,6 +564,96 @@ const broadcastOfferDeclined = (offer: InternalOffer): void => {
   );
 };
 
+const broadcastOfferExpired = (offer: InternalOffer): void => {
+  publishRealtimeEvent(
+    `driver:${offer.driverId}`,
+    'dispatch.offer.expired',
+    { offerId: offer.id },
+  );
+  publishRealtimeEvent(
+    `passenger:${offer.passengerId}`,
+    'booking.offer.expired',
+    { offerId: offer.id, bookingId: offer.bookingId },
+  );
+};
+
+const attemptBookingMatch = async (
+  booking: BookingRecord,
+  exclude?: Set<string>,
+): Promise<boolean> => {
+  const redis = getRedisClient();
+  const driver = redis
+    ? await findAvailableDriverRedis(exclude)
+    : findAvailableDriverMemory(exclude);
+
+  if (!driver) {
+    return false;
+  }
+
+  const offer = redis
+    ? await createOfferRedis(driver.driverId, booking)
+    : createOfferMemory(driver.driverId, booking);
+
+  await removeBookingRequest(booking.id);
+  broadcastOfferCreated(offer);
+
+  return true;
+};
+
+const redispatchBooking = async (
+  bookingId: string,
+  exclude?: Set<string>,
+): Promise<void> => {
+  const record = await bookingRepository.getBookingById(bookingId);
+  if (!record || record.status !== 'requested') {
+    return;
+  }
+
+  const matched = await attemptBookingMatch(record, exclude);
+  if (!matched) {
+    await enqueueBookingRequest(record.id, Date.now());
+  }
+};
+
+const expireOfferInternal = async (offer: InternalOffer): Promise<void> => {
+  const redis = getRedisClient();
+  if (redis) {
+    await setOfferStatusRedis(offer.id, 'expired');
+    await removeOfferRedis(offer.driverId, offer.id);
+    await updateDriverStatusRedis(offer.driverId, 'available');
+  } else {
+    setOfferStatusMemory(offer, 'expired');
+    removeOfferMemory(offer.id);
+    updateDriverStatusMemory(offer.driverId, 'available');
+  }
+
+  broadcastOfferExpired(offer);
+  await redispatchBooking(offer.bookingId, new Set([offer.driverId]));
+};
+
+const sweepExpiredOffers = async (now?: number): Promise<void> => {
+  const currentTime = now ?? Date.now();
+  const cutoff = currentTime - OFFER_TTL_MS;
+  if (cutoff <= 0) {
+    return;
+  }
+
+  const redis = getRedisClient();
+  const pendingOffers = redis
+    ? await listPendingOffersRedis()
+    : listPendingOffersMemory();
+
+  if (pendingOffers.length === 0) {
+    return;
+  }
+
+  for (const offer of pendingOffers) {
+    if (hasOfferExpired(offer, cutoff)) {
+      await expireOfferInternal(offer);
+    }
+  }
+};
+
 export const dispatchService = {
   async registerHeartbeat(
     driverId: string,
@@ -522,23 +670,7 @@ export const dispatchService = {
   },
 
   async handleNewBooking(booking: BookingRecord): Promise<boolean> {
-    const redis = getRedisClient();
-    const driver = redis
-      ? await findAvailableDriverRedis()
-      : findAvailableDriverMemory();
-
-    if (!driver) {
-      return false;
-    }
-
-    const offer = redis
-      ? await createOfferRedis(driver.driverId, booking)
-      : createOfferMemory(driver.driverId, booking);
-
-    await removeBookingRequest(booking.id);
-    broadcastOfferCreated(offer);
-
-    return true;
+    return attemptBookingMatch(booking);
   },
 
   async acceptOffer(
@@ -609,13 +741,7 @@ export const dispatchService = {
 
     broadcastOfferDeclined(offer);
 
-    const record = await bookingRepository.getBookingById(offer.bookingId);
-    if (record && record.status === 'requested') {
-      const matched = await dispatchService.handleNewBooking(record);
-      if (!matched) {
-        await enqueueBookingRequest(record.id, Date.now());
-      }
-    }
+    await redispatchBooking(offer.bookingId, new Set([offer.driverId]));
 
     if (reason) {
       publishRealtimeEvent(
@@ -627,6 +753,14 @@ export const dispatchService = {
         },
       );
     }
+  },
+
+  async reapExpiredOffers(options?: { now?: number }): Promise<void> {
+    await sweepExpiredOffers(options?.now);
+  },
+
+  getOfferTtlMs(): number {
+    return OFFER_TTL_MS;
   },
 
   async reset(): Promise<void> {

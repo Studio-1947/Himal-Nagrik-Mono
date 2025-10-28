@@ -16,14 +16,37 @@ export type CreateBookingPayload = {
   paymentMethod?: "cash" | "wallet" | "upi";
 };
 
+export type BookingStatus =
+  | "requested"
+  | "driver_assigned"
+  | "enroute_pickup"
+  | "passenger_onboard"
+  | "completed"
+  | "cancelled_passenger"
+  | "cancelled_driver"
+  | "cancelled_system"
+  | "expired";
+
+export type BookingDriver = {
+  id: string;
+  name: string;
+  phone?: string | null;
+  vehicle?: {
+    manufacturer?: string;
+    model?: string;
+    registrationNumber?: string;
+    color?: string | null;
+  } | null;
+};
+
 export type BookingResponse = {
   id: string;
   passengerId: string;
-  status: string;
+  status: BookingStatus;
   pickup: LocationPoint;
   dropoff: LocationPoint;
   fareQuote?: unknown;
-  driver: unknown;
+  driver?: BookingDriver | null;
   scheduledAt?: string | null;
   requestedAt: string;
   lastUpdatedAt: string;

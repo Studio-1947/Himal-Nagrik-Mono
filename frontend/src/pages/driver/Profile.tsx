@@ -31,6 +31,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { DispatchTestPanel } from "@/components/dispatch/DispatchTestPanel";
 import { driverService } from "@/lib/driver-service";
 
 const optionalShortString = z.string().max(160).optional().or(z.literal(""));
@@ -390,6 +391,13 @@ const DriverProfilePage = () => {
                   : "Go online"}
               </Button>
             </div>
+
+            {session?.token && profile.role === "driver" ? (
+              <DispatchTestPanel
+                token={session.token}
+                defaultCapacity={profile.vehicle.capacity}
+              />
+            ) : null}
 
             <div className="rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur-xl">
               <h2 className="text-lg font-semibold text-white">
