@@ -46,6 +46,7 @@ The `vercel.json` file rewrites all incoming requests to the Express app served 
 - `npm run build` - compiles the TypeScript source to `dist`
 - `npm start` - runs the compiled JavaScript from the `dist` folder
 - `npm run typecheck` - verifies the project with the TypeScript compiler without emitting files
+- `npm run seed` - inserts demo passengers, drivers, and rides for local testing
 
 ## Project Structure
 ```
