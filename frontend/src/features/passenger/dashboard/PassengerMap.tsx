@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+ï»¿import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { PassengerDashboardSummary } from "@/lib/passenger-service";
 import {
@@ -266,7 +266,7 @@ export const PassengerMap = ({ summary }: PassengerMapProps) => {
       <div ref={mapContainerRef} className="h-full w-full" />
       {!isReady && !mapError ? (
         <div className="absolute inset-0 flex items-center justify-center bg-slate-950/60 text-sm text-slate-200 backdrop-blur-sm">
-          Loading live map…
+          Loading live mapâ€¦
         </div>
       ) : null}
       {mapError ? (
@@ -287,7 +287,7 @@ export const PassengerMap = ({ summary }: PassengerMapProps) => {
         <div className="rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2 text-xs text-slate-200 shadow-lg shadow-slate-900/50">
           <p className="text-[10px] uppercase tracking-[0.3em] text-slate-400">Avg pickup</p>
           <p className="text-base font-semibold text-white">
-            {summary.driverAvailability.averageEtaMinutes ?? "—"} min
+            {summary.driverAvailability.averageEtaMinutes ?? "â€”"} min
           </p>
           <p className="text-[11px] text-slate-400">Live updated</p>
         </div>

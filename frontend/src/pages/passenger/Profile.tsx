@@ -30,7 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { usePassengerDashboard } from "@/hooks/use-passenger-dashboard";
-import { PassengerDashboard } from "@/features/passenger/dashboard/PassengerDashboard";
+import { PassengerMap } from "@/features/passenger/dashboard/PassengerMap";
 
 const passengerSettingsSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters" }),
@@ -240,12 +240,7 @@ const PassengerProfilePage = () => {
         <main className="mt-10 grid gap-10 lg:grid-cols-[2fr,1fr]">
           <section className="space-y-8">
             {dashboardSummary ? (
-              <PassengerDashboard
-                summary={dashboardSummary}
-                onRefresh={refreshDashboard}
-                isRefreshing={isDashboardRefreshing}
-                onSetFocus={setDashboardFocus}
-              />
+              <PassengerMap summary={dashboardSummary} />
             ) : isDashboardLoading ? (
               <div className="h-80 animate-pulse rounded-3xl border border-white/10 bg-white/5" />
             ) : null}

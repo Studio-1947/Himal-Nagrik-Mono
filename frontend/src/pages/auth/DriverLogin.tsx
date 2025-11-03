@@ -1,9 +1,11 @@
-﻿import { ArrowRight, CalendarClock, Gauge, ListChecks } from "lucide-react";
+﻿import { useEffect } from "react";
+import { ArrowRight, CalendarClock, Gauge, ListChecks } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/use-auth";
 import type { AuthSession } from "@/lib/auth-service";
 
 const driverHighlights = [
@@ -30,15 +32,27 @@ const driverHighlights = [
 const DriverLoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isAuthenticated, role } = useAuth();
   const from = (location.state as { from?: { pathname?: string } } | undefined)
     ?.from?.pathname;
+
+  // Auto-redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated && role === "driver") {
+      const fallback = "/driver/profile";
+      navigate(from ?? fallback, { replace: true });
+    }
+  }, [isAuthenticated, role, navigate, from]);
 
   const handleSuccess = (session: AuthSession) => {
     const fallback =
       session.profile.role === "driver"
         ? "/driver/profile"
         : "/passenger/profile";
-    navigate(from ?? fallback, { replace: true });
+    // Use setTimeout to ensure navigation happens after state updates
+    setTimeout(() => {
+      navigate(from ?? fallback, { replace: true });
+    }, 0);
   };
 
   return (
