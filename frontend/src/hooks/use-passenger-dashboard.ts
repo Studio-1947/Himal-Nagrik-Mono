@@ -1,5 +1,4 @@
-
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   passengerService,
@@ -7,6 +6,9 @@ import {
   type PassengerDashboardSummary,
 } from "@/lib/passenger-service";
 import { useAuth } from "@/hooks/use-auth";
+import { realtimeClient, type RealtimeEvent } from "@/lib/realtime";
+
+const MAX_EVENTS = 10;
 
 export const usePassengerDashboard = () => {
   const { session } = useAuth();
@@ -15,6 +17,8 @@ export const usePassengerDashboard = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState<FetchDashboardSummaryParams | undefined>();
+  const [events, setEvents] = useState<RealtimeEvent[]>([]);
+  const refreshTimeoutRef = useRef<number | null>(null);
 
   const canLoad = useMemo(() => Boolean(token), [token]);
 
@@ -65,6 +69,58 @@ export const usePassengerDashboard = () => {
     };
   }, [canLoad, loadDashboard]);
 
+  const scheduleRealtimeRefresh = useCallback(
+    (overrideParams?: FetchDashboardSummaryParams) => {
+      if (refreshTimeoutRef.current !== null) {
+        return;
+      }
+      refreshTimeoutRef.current = window.setTimeout(() => {
+        refreshTimeoutRef.current = null;
+        void loadDashboard(overrideParams);
+      }, 1200);
+    },
+    [loadDashboard],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (refreshTimeoutRef.current !== null) {
+        window.clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!summary) {
+      return;
+    }
+
+    const unsubscribes: Array<() => void> = [];
+
+    unsubscribes.push(
+      realtimeClient.subscribe("dispatch:availability", (event) => {
+        if (event.type === "dispatch.availability") {
+          scheduleRealtimeRefresh();
+        }
+      }),
+    );
+
+    const passengerChannel = `passenger:${summary.passenger.id}`;
+    unsubscribes.push(
+      realtimeClient.subscribe(passengerChannel, (event) => {
+        if (event.type.startsWith("booking.")) {
+          setEvents((prev) => [...prev.slice(-MAX_EVENTS + 1), event]);
+          scheduleRealtimeRefresh();
+        }
+      }),
+    );
+
+    return () => {
+      unsubscribes.forEach((unsubscribe) => unsubscribe());
+    };
+  }, [summary, scheduleRealtimeRefresh]);
+
   return {
     summary,
     isLoading: isLoading && !summary,
@@ -76,5 +132,6 @@ export const usePassengerDashboard = () => {
       void loadDashboard(params);
     },
     currentQuery: query,
+    events,
   };
 };
