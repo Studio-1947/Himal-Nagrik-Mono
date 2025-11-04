@@ -23,9 +23,18 @@ export const useDriverOffers = () => {
     
     try {
       const offers = await dispatchService.listOffers(token);
+      console.log('[useDriverOffers] Loaded offers:', offers);
       // Get the most recent pending offer
       const pendingOffer = offers.find(o => o.status === 'pending');
-      setCurrentOffer(pendingOffer || null);
+      if (pendingOffer) {
+        console.log('[useDriverOffers] Setting current offer:', pendingOffer);
+        setCurrentOffer(pendingOffer);
+        // Play notification sound for existing offers
+        playNotificationSound();
+      } else {
+        console.log('[useDriverOffers] No pending offers found');
+        setCurrentOffer(null);
+      }
     } catch (err) {
       console.error('Failed to load offers:', err);
       setError(err instanceof Error ? err.message : 'Failed to load offers');

@@ -22,6 +22,11 @@ export const RideOfferNotification = ({
   const [showRejectReason, setShowRejectReason] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
 
+  // Debug log when offer changes
+  useEffect(() => {
+    console.log('[RideOfferNotification] Offer prop changed:', offer);
+  }, [offer]);
+
   // Calculate time remaining
   useEffect(() => {
     if (!offer) {

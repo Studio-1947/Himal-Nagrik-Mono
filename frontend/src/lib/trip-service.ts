@@ -58,12 +58,11 @@ export interface TripHistoryItem {
 
 export const tripService = {
   async startTrip(token: string, data: StartTripRequest): Promise<TripResponse> {
-    const response = await apiClient.post('/trips/start', data, {
+    return apiClient.post<TripResponse>('/trips/start', data, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-    return response.data;
   },
 
   async updateLocation(
@@ -83,24 +82,22 @@ export const tripService = {
     rideId: string,
     data: CompleteTripRequest,
   ): Promise<TripResponse> {
-    const response = await apiClient.post(`/trips/${rideId}/complete`, data, {
+    return apiClient.post<TripResponse>(`/trips/${rideId}/complete`, data, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-    return response.data;
   },
 
   async getCurrentTrip(token: string): Promise<ActiveTripSummary | null> {
     try {
-      const response = await apiClient.get('/trips/current', {
+      return await apiClient.get<ActiveTripSummary>('/trips/current', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-      return response.data;
     } catch (error: any) {
-      if (error.response?.status === 404) {
+      if (error.status === 404) {
         return null;
       }
       throw error;
@@ -108,22 +105,21 @@ export const tripService = {
   },
 
   async getTripHistory(token: string, limit = 20): Promise<TripHistoryItem[]> {
-    const response = await apiClient.get('/trips/history', {
+    const response = await apiClient.get<{ trips: TripHistoryItem[] }>('/trips/history', {
       params: { limit },
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-    return response.data.trips || [];
+    return response.trips || [];
   },
 
   async getTripDetails(token: string, rideId: string): Promise<TripResponse> {
-    const response = await apiClient.get(`/trips/${rideId}`, {
+    return apiClient.get<TripResponse>(`/trips/${rideId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-    return response.data;
   },
 };
 

@@ -880,9 +880,22 @@ export const dispatchService = {
     return availability;
   },
 
-  async listOffers(driverId: string): Promise<DispatchOffer[]> {
+  async listOffers(driverId: string): Promise<any[]> {
     const redis = getRedisClient();
-    return redis ? listOffersRedis(driverId) : listOffersMemory(driverId);
+    const basicOffers = redis ? await listOffersRedis(driverId) : listOffersMemory(driverId);
+    
+    // Enrich each offer with booking data
+    const enrichedOffers = await Promise.all(
+      basicOffers.map(async (offer) => {
+        const internalOffer: InternalOffer = {
+          ...offer,
+          driverId,
+        } as InternalOffer;
+        return enrichOfferWithBookingData(internalOffer);
+      })
+    );
+    
+    return enrichedOffers;
   },
 
   async handleNewBooking(booking: BookingRecord): Promise<boolean> {

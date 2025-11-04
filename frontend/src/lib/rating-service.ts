@@ -34,21 +34,19 @@ export const ratingService = {
     token: string,
     data: CreateRatingRequest,
   ): Promise<RatingResponse> {
-    const response = await apiClient.post('/ratings', data, {
+    return apiClient.post<RatingResponse>('/ratings', data, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-    return response.data;
   },
 
   async getRating(token: string, ratingId: string): Promise<RatingResponse> {
-    const response = await apiClient.get(`/ratings/${ratingId}`, {
+    return apiClient.get<RatingResponse>(`/ratings/${ratingId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-    return response.data;
   },
 
   async getUserRatings(
@@ -56,35 +54,34 @@ export const ratingService = {
     userId: string,
     limit = 20,
   ): Promise<RatingResponse[]> {
-    const response = await apiClient.get(`/ratings/user/${userId}`, {
+    const response = await apiClient.get<{ ratings: RatingResponse[] }>(`/ratings/user/${userId}`, {
       params: { limit },
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-    return response.data.ratings || [];
+    return response.ratings || [];
   },
 
   async getMyGivenRatings(token: string, limit = 20): Promise<RatingResponse[]> {
-    const response = await apiClient.get('/ratings/me/given', {
+    const response = await apiClient.get<{ ratings: RatingResponse[] }>('/ratings/me/given', {
       params: { limit },
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-    return response.data.ratings || [];
+    return response.ratings || [];
   },
 
   async getUserRatingSummary(
     token: string,
     userId: string,
   ): Promise<RatingSummary> {
-    const response = await apiClient.get(`/ratings/user/${userId}/summary`, {
+    return apiClient.get<RatingSummary>(`/ratings/user/${userId}/summary`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-    return response.data;
   },
 
   async updateRating(
@@ -92,12 +89,11 @@ export const ratingService = {
     ratingId: string,
     updates: Partial<CreateRatingRequest>,
   ): Promise<RatingResponse> {
-    const response = await apiClient.put(`/ratings/${ratingId}`, updates, {
+    return apiClient.put<RatingResponse>(`/ratings/${ratingId}`, updates, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-    return response.data;
   },
 
   async deleteRating(token: string, ratingId: string): Promise<void> {

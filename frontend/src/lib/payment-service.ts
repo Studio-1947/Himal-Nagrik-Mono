@@ -43,31 +43,29 @@ export const paymentService = {
     token: string,
     data: CreatePaymentRequest,
   ): Promise<PaymentResponse> {
-    const response = await apiClient.post('/payments', data, {
+    return apiClient.post<PaymentResponse>('/payments', data, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-    return response.data;
   },
 
   async getPayment(token: string, paymentId: string): Promise<PaymentResponse> {
-    const response = await apiClient.get(`/payments/${paymentId}`, {
+    return apiClient.get<PaymentResponse>(`/payments/${paymentId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-    return response.data;
   },
 
   async getPaymentHistory(token: string, limit = 20): Promise<PaymentResponse[]> {
-    const response = await apiClient.get('/payments/history/me', {
+    const response = await apiClient.get<{ payments: PaymentResponse[] }>('/payments/history/me', {
       params: { limit },
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-    return response.data.payments || [];
+    return response.payments || [];
   },
 
   async createPayout(
@@ -75,7 +73,7 @@ export const paymentService = {
     periodStart: string,
     periodEnd: string,
   ): Promise<PayoutResponse> {
-    const response = await apiClient.post(
+    return apiClient.post<PayoutResponse>(
       '/payments/payouts',
       { periodStart, periodEnd },
       {
@@ -84,26 +82,24 @@ export const paymentService = {
         },
       },
     );
-    return response.data;
   },
 
   async getPayoutHistory(token: string, limit = 20): Promise<PayoutResponse[]> {
-    const response = await apiClient.get('/payments/payouts/history', {
+    const response = await apiClient.get<{ payouts: PayoutResponse[] }>('/payments/payouts/history', {
       params: { limit },
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-    return response.data.payouts || [];
+    return response.payouts || [];
   },
 
   async getPaymentSummary(token: string): Promise<PaymentSummary> {
-    const response = await apiClient.get('/payments/payouts/summary', {
+    return apiClient.get<PaymentSummary>('/payments/payouts/summary', {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-    return response.data;
   },
 };
 

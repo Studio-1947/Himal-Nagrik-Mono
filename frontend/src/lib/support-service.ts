@@ -36,52 +36,49 @@ export const supportService = {
     token: string,
     data: CreateTicketRequest,
   ): Promise<TicketResponse> {
-    const response = await apiClient.post('/support', data, {
+    return apiClient.post<TicketResponse>('/support', data, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-    return response.data;
   },
 
   async getTicket(token: string, ticketId: string): Promise<TicketResponse> {
-    const response = await apiClient.get(`/support/${ticketId}`, {
+    return apiClient.get<TicketResponse>(`/support/${ticketId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-    return response.data;
   },
 
   async getMyTickets(token: string, limit = 20): Promise<TicketResponse[]> {
-    const response = await apiClient.get('/support/me/tickets', {
+    const response = await apiClient.get<{ tickets: TicketResponse[] }>('/support/me/tickets', {
       params: { limit },
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-    return response.data.tickets || [];
+    return response.tickets || [];
   },
 
   async getRideTickets(
     token: string,
     rideId: string,
   ): Promise<TicketResponse[]> {
-    const response = await apiClient.get(`/support/ride/${rideId}`, {
+    const response = await apiClient.get<{ tickets: TicketResponse[] }>(`/support/ride/${rideId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-    return response.data.tickets || [];
+    return response.tickets || [];
   },
 
   async getTicketSummary(token: string): Promise<TicketSummary> {
-    const response = await apiClient.get('/support/summary/me', {
+    return apiClient.get<TicketSummary>('/support/summary/me', {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-    return response.data;
   },
 
   async updateTicket(
@@ -89,12 +86,11 @@ export const supportService = {
     ticketId: string,
     updates: { status?: 'closed' },
   ): Promise<TicketResponse> {
-    const response = await apiClient.put(`/support/${ticketId}`, updates, {
+    return apiClient.put<TicketResponse>(`/support/${ticketId}`, updates, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-    return response.data;
   },
 
   async deleteTicket(token: string, ticketId: string): Promise<void> {
