@@ -23,20 +23,155 @@ const StylisedFallbackMap = () => (
   </div>
 );
 
-const createMarkerElement = (tone: "passenger" | "driver") => {
+const createDriverMarkerElement = (etaMinutes: number) => {
   const wrapper = document.createElement("div");
-  wrapper.className =
-    "flex h-5 w-5 items-center justify-center rounded-full border border-white/30 bg-white/90 shadow-[0_0_18px_rgba(16,185,129,0.35)]";
-  wrapper.style.backdropFilter = "blur(6px)";
+  wrapper.style.width = "40px";
+  wrapper.style.height = "40px";
+  wrapper.style.position = "relative";
+  wrapper.style.cursor = "pointer";
+  wrapper.style.transition = "transform 0.2s ease";
+  
+  // Pulsing animation ring
+  const pulseRing = document.createElement("div");
+  pulseRing.style.position = "absolute";
+  pulseRing.style.top = "50%";
+  pulseRing.style.left = "50%";
+  pulseRing.style.transform = "translate(-50%, -50%)";
+  pulseRing.style.width = "40px";
+  pulseRing.style.height = "40px";
+  pulseRing.style.borderRadius = "50%";
+  pulseRing.style.backgroundColor = "rgba(14, 165, 233, 0.2)";
+  pulseRing.style.animation = "pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite";
+  wrapper.appendChild(pulseRing);
 
-  const dot = document.createElement("div");
-  dot.className = tone === "passenger" ? "h-3 w-3 rounded-full bg-emerald-500" : "h-3 w-3 rounded-full bg-sky-400";
-  dot.style.boxShadow =
-    tone === "passenger"
-      ? "0 0 14px rgba(16,185,129,0.55)"
-      : "0 0 12px rgba(14,165,233,0.5)";
+  // Car icon container
+  const carContainer = document.createElement("div");
+  carContainer.style.position = "absolute";
+  carContainer.style.top = "50%";
+  carContainer.style.left = "50%";
+  carContainer.style.transform = "translate(-50%, -50%)";
+  carContainer.style.width = "32px";
+  carContainer.style.height = "32px";
+  carContainer.style.backgroundColor = "#0ea5e9";
+  carContainer.style.borderRadius = "50%";
+  carContainer.style.border = "3px solid white";
+  carContainer.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 2px rgba(14, 165, 233, 0.2)";
+  carContainer.style.display = "flex";
+  carContainer.style.alignItems = "center";
+  carContainer.style.justifyContent = "center";
+  
+  // Car SVG icon
+  const carSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  carSvg.setAttribute("width", "18");
+  carSvg.setAttribute("height", "18");
+  carSvg.setAttribute("viewBox", "0 0 24 24");
+  carSvg.setAttribute("fill", "white");
+  
+  const carPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  carPath.setAttribute(
+    "d",
+    "M5 11l1.5-4.5h11L19 11m-1.5 5a1.5 1.5 0 01-3 0m-9 0a1.5 1.5 0 013 0m12 0h1.5m-16.5 0h-1.5m17-5H5m2.5-6h9L18 8H6l1.5-3z"
+  );
+  carSvg.appendChild(carPath);
+  carContainer.appendChild(carSvg);
+  wrapper.appendChild(carContainer);
 
-  wrapper.appendChild(dot);
+  // ETA badge
+  const etaBadge = document.createElement("div");
+  etaBadge.style.position = "absolute";
+  etaBadge.style.bottom = "-8px";
+  etaBadge.style.left = "50%";
+  etaBadge.style.transform = "translateX(-50%)";
+  etaBadge.style.backgroundColor = "rgba(15, 23, 42, 0.95)";
+  etaBadge.style.color = "white";
+  etaBadge.style.padding = "2px 6px";
+  etaBadge.style.borderRadius = "8px";
+  etaBadge.style.fontSize = "10px";
+  etaBadge.style.fontWeight = "600";
+  etaBadge.style.whiteSpace = "nowrap";
+  etaBadge.style.border = "1px solid rgba(255, 255, 255, 0.2)";
+  etaBadge.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.3)";
+  etaBadge.textContent = `${etaMinutes}m`;
+  wrapper.appendChild(etaBadge);
+
+  // Add CSS animation if not already added
+  if (!document.getElementById("map-marker-styles")) {
+    const style = document.createElement("style");
+    style.id = "map-marker-styles";
+    style.textContent = `
+      @keyframes pulse-ring {
+        0%, 100% {
+          transform: translate(-50%, -50%) scale(1);
+          opacity: 0.4;
+        }
+        50% {
+          transform: translate(-50%, -50%) scale(1.4);
+          opacity: 0;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  wrapper.onmouseenter = () => {
+    wrapper.style.transform = "scale(1.1)";
+    wrapper.style.zIndex = "1000";
+  };
+  wrapper.onmouseleave = () => {
+    wrapper.style.transform = "scale(1)";
+    wrapper.style.zIndex = "auto";
+  };
+
+  return wrapper;
+};
+
+const createPassengerMarkerElement = () => {
+  const wrapper = document.createElement("div");
+  wrapper.style.width = "36px";
+  wrapper.style.height = "36px";
+  wrapper.style.position = "relative";
+  wrapper.style.cursor = "pointer";
+  
+  // Pin body
+  const pinBody = document.createElement("div");
+  pinBody.style.position = "absolute";
+  pinBody.style.top = "0";
+  pinBody.style.left = "50%";
+  pinBody.style.transform = "translateX(-50%)";
+  pinBody.style.width = "24px";
+  pinBody.style.height = "24px";
+  pinBody.style.backgroundColor = "#10b981";
+  pinBody.style.borderRadius = "50% 50% 50% 0";
+  pinBody.style.transform = "translateX(-50%) rotate(-45deg)";
+  pinBody.style.border = "3px solid white";
+  pinBody.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 2px rgba(16, 185, 129, 0.2)";
+  
+  // Pin center dot
+  const pinDot = document.createElement("div");
+  pinDot.style.position = "absolute";
+  pinDot.style.top = "50%";
+  pinDot.style.left = "50%";
+  pinDot.style.transform = "translate(-50%, -50%) rotate(45deg)";
+  pinDot.style.width = "8px";
+  pinDot.style.height = "8px";
+  pinDot.style.backgroundColor = "white";
+  pinDot.style.borderRadius = "50%";
+  pinBody.appendChild(pinDot);
+  wrapper.appendChild(pinBody);
+
+  // Shadow
+  const shadow = document.createElement("div");
+  shadow.style.position = "absolute";
+  shadow.style.bottom = "0";
+  shadow.style.left = "50%";
+  shadow.style.transform = "translateX(-50%)";
+  shadow.style.width = "12px";
+  shadow.style.height = "4px";
+  shadow.style.backgroundColor = "rgba(0, 0, 0, 0.2)";
+  shadow.style.borderRadius = "50%";
+  shadow.style.filter = "blur(2px)";
+  wrapper.appendChild(shadow);
+
   return wrapper;
 };
 
@@ -196,8 +331,10 @@ export const PassengerMap = ({ summary }: PassengerMapProps) => {
     markersRef.current.forEach((entry) => entry.marker.remove());
     markersRef.current = [];
 
+    // Passenger marker (pin)
     const passengerMarker = new maplibregl.Marker({
-      element: createMarkerElement("passenger"),
+      element: createPassengerMarkerElement(),
+      anchor: "bottom",
     })
       .setLngLat([passengerLocation.longitude, passengerLocation.latitude])
       .addTo(map);
@@ -207,19 +344,63 @@ export const PassengerMap = ({ summary }: PassengerMapProps) => {
       marker: passengerMarker,
     });
 
+    // Driver markers (cars with ETA)
     driverLocations.forEach((driver) => {
-      const element = createMarkerElement("driver");
-      element.title = `ETA ${driver.etaMinutes} min`;
+      const element = createDriverMarkerElement(driver.etaMinutes);
+      element.title = `Driver • ETA ${driver.etaMinutes} min`;
 
-      const marker = new maplibregl.Marker({ element })
+      const marker = new maplibregl.Marker({
+        element,
+        anchor: "center",
+      })
         .setLngLat([driver.location.longitude, driver.location.latitude])
         .setPopup(
           new maplibregl.Popup({
             closeButton: false,
             closeOnClick: true,
-            offset: 12,
+            offset: [0, -10],
+            maxWidth: "160px",
+            className: "driver-popup",
           }).setHTML(
-            `<div style="font-size:12px;font-weight:600;color:#0f172a;">ETA ${driver.etaMinutes} min</div>`,
+            `<div style="
+              padding: 8px 12px;
+              background: white;
+              border-radius: 8px;
+              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+              font-family: system-ui, -apple-system, sans-serif;
+            ">
+              <div style="
+                display: flex;
+                align-items: center;
+                gap: 8px;
+              ">
+                <div style="
+                  width: 24px;
+                  height: 24px;
+                  background: #0ea5e9;
+                  border-radius: 50%;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                ">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
+                    <path d="M5 11l1.5-4.5h11L19 11m-1.5 5a1.5 1.5 0 01-3 0m-9 0a1.5 1.5 0 013 0m12 0h1.5m-16.5 0h-1.5m17-5H5m2.5-6h9L18 8H6l1.5-3z"/>
+                  </svg>
+                </div>
+                <div>
+                  <div style="
+                    font-size: 13px;
+                    font-weight: 600;
+                    color: #0f172a;
+                    margin-bottom: 2px;
+                  ">Available driver</div>
+                  <div style="
+                    font-size: 11px;
+                    color: #64748b;
+                  ">Estimated arrival: <strong style="color: #0ea5e9;">${driver.etaMinutes} min</strong></div>
+                </div>
+              </div>
+            </div>`,
           ),
         )
         .addTo(map);
@@ -241,16 +422,18 @@ export const PassengerMap = ({ summary }: PassengerMapProps) => {
 
       if (map.isStyleLoaded()) {
         map.fitBounds(bounds, {
-          padding: 80,
-          maxZoom: 16,
+          padding: { top: 80, bottom: 80, left: 80, right: 80 },
+          maxZoom: 15,
           animate: true,
+          duration: 800,
         });
       } else {
         map.once("load", () => {
           map.fitBounds(bounds, {
-            padding: 80,
-            maxZoom: 16,
+            padding: { top: 80, bottom: 80, left: 80, right: 80 },
+            maxZoom: 15,
             animate: true,
+            duration: 800,
           });
         });
       }
@@ -262,7 +445,7 @@ export const PassengerMap = ({ summary }: PassengerMapProps) => {
   }
 
   return (
-    <div className="relative h-80 w-full overflow-hidden rounded-2xl border border-white/10 bg-slate-950/80">
+    <div className="relative h-[500px] w-full overflow-hidden rounded-2xl border border-white/10 bg-slate-950/80 shadow-xl">
       <div ref={mapContainerRef} className="h-full w-full" />
       {!isReady && !mapError ? (
         <div className="absolute inset-0 flex items-center justify-center bg-slate-950/60 text-sm text-slate-200 backdrop-blur-sm">
