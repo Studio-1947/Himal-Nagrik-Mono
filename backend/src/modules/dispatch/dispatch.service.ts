@@ -678,12 +678,62 @@ const broadcastAvailability = (availability: DriverAvailability): void => {
   );
 };
 
-const broadcastOfferCreated = (offer: InternalOffer): void => {
+const enrichOfferWithBookingData = async (
+  offer: InternalOffer,
+): Promise<any> => {
+  const booking = await bookingRepository.getBookingById(offer.bookingId);
+  if (!booking) {
+    return mapInternalOfferToResponse(offer);
+  }
+
+  const expiresAt = new Date(
+    new Date(offer.createdAt).getTime() + OFFER_TTL_MS,
+  ).toISOString();
+
+  // Parse pickup and dropoff locations
+  const pickup = typeof booking.pickupLocation === 'string'
+    ? JSON.parse(booking.pickupLocation)
+    : booking.pickupLocation;
+  const dropoff = typeof booking.dropoffLocation === 'string'
+    ? JSON.parse(booking.dropoffLocation)
+    : booking.dropoffLocation;
+
+  // Parse fare quote
+  const fareQuote = booking.fareQuote
+    ? typeof booking.fareQuote === 'string'
+      ? JSON.parse(booking.fareQuote)
+      : booking.fareQuote
+    : undefined;
+
+  return {
+    ...mapInternalOfferToResponse(offer),
+    driverId: offer.driverId,
+    pickup,
+    dropoff,
+    expiresAt,
+    fareQuote: fareQuote
+      ? {
+          amount: fareQuote.amount,
+          currency: fareQuote.currency,
+          breakdown: fareQuote.breakdown,
+        }
+      : undefined,
+    passenger: {
+      name: 'Passenger',
+      phone: undefined,
+      rating: 5.0,
+    },
+  };
+};
+
+const broadcastOfferCreated = async (offer: InternalOffer): Promise<void> => {
+  const enrichedOffer = await enrichOfferWithBookingData(offer);
   const payload = mapInternalOfferToResponse(offer);
+  
   publishRealtimeEvent(
     `driver:${offer.driverId}`,
     'dispatch.offer.created',
-    payload,
+    { offer: enrichedOffer },
   );
   publishRealtimeEvent(
     `passenger:${offer.passengerId}`,
@@ -761,7 +811,7 @@ const attemptBookingMatch = async (
     : createOfferMemory(driver.driverId, booking);
 
   await removeBookingRequest(booking.id);
-  broadcastOfferCreated(offer);
+  await broadcastOfferCreated(offer);
 
   return true;
 };

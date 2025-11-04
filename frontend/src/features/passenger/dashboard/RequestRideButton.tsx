@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,7 +13,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { bookingService, type CreateBookingPayload } from "@/lib/booking-service";
 import { useAuth } from "@/hooks/use-auth";
 import type { PassengerSavedLocation } from "@/lib/passenger-service";
-import { MapPin, Loader2, Search } from "lucide-react";
+import { MapPin, Loader2, Search, Navigation } from "lucide-react";
+import { useGeolocation } from "@/hooks/use-geolocation";
 
 type RequestRideButtonProps = {
   savedLocations: PassengerSavedLocation[];
@@ -51,7 +52,12 @@ const searchAddress = async (query: string): Promise<LocationSearchResult[]> => 
       `&format=json` +
       `&limit=5` +
       `&countrycodes=in,np,bt` + // Focus on India, Nepal, Bhutan
-      `&addressdetails=1`
+      `&addressdetails=1`,
+      {
+        headers: {
+          'User-Agent': 'Himal-Nagrik-Taxi-App/1.0',
+        },
+      }
     );
     
     if (!response.ok) throw new Error("Search failed");
@@ -59,6 +65,30 @@ const searchAddress = async (query: string): Promise<LocationSearchResult[]> => 
   } catch (error) {
     console.error("Address search error:", error);
     return [];
+  }
+};
+
+// Reverse geocoding - convert coordinates to address
+const reverseGeocode = async (lat: number, lon: number): Promise<string> => {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?` +
+      `lat=${lat}` +
+      `&lon=${lon}` +
+      `&format=json`,
+      {
+        headers: {
+          'User-Agent': 'Himal-Nagrik-Taxi-App/1.0',
+        },
+      }
+    );
+    
+    if (!response.ok) throw new Error("Reverse geocoding failed");
+    const data = await response.json();
+    return data.display_name || `${lat}, ${lon}`;
+  } catch (error) {
+    console.error("Reverse geocoding error:", error);
+    return `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
   }
 };
 
@@ -94,37 +124,83 @@ export const RequestRideButton = ({
   const [isSearchingDropoff, setIsSearchingDropoff] = useState(false);
   const [showPickupResults, setShowPickupResults] = useState(false);
   const [showDropoffResults, setShowDropoffResults] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const pickupSearchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const dropoffSearchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Get user's current location
+  const geolocation = useGeolocation({ enableHighAccuracy: true });
 
-  // Search pickup address
+  // Search pickup address with debouncing
   const handlePickupSearch = useCallback(async (query: string) => {
     setPickupSearch(query);
+    setSearchError(null);
+    
     if (query.length < 3) {
       setPickupResults([]);
       setShowPickupResults(false);
       return;
     }
 
+    // Clear previous timeout
+    if (pickupSearchTimeoutRef.current) {
+      clearTimeout(pickupSearchTimeoutRef.current);
+    }
+
     setIsSearchingPickup(true);
     setShowPickupResults(true);
-    const results = await searchAddress(query);
-    setPickupResults(results);
-    setIsSearchingPickup(false);
+    
+    // Debounce search by 500ms
+    pickupSearchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const results = await searchAddress(query);
+        if (results.length === 0) {
+          setSearchError("No locations found. Try a different search term.");
+        }
+        setPickupResults(results);
+      } catch (error) {
+        setSearchError("Search failed. Please try again.");
+        setPickupResults([]);
+      } finally {
+        setIsSearchingPickup(false);
+      }
+    }, 500);
   }, []);
 
-  // Search dropoff address
+  // Search dropoff address with debouncing
   const handleDropoffSearch = useCallback(async (query: string) => {
     setDropoffSearch(query);
+    setSearchError(null);
+    
     if (query.length < 3) {
       setDropoffResults([]);
       setShowDropoffResults(false);
       return;
     }
 
+    // Clear previous timeout
+    if (dropoffSearchTimeoutRef.current) {
+      clearTimeout(dropoffSearchTimeoutRef.current);
+    }
+
     setIsSearchingDropoff(true);
     setShowDropoffResults(true);
-    const results = await searchAddress(query);
-    setDropoffResults(results);
-    setIsSearchingDropoff(false);
+    
+    // Debounce search by 500ms
+    dropoffSearchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const results = await searchAddress(query);
+        if (results.length === 0) {
+          setSearchError("No locations found. Try a different search term.");
+        }
+        setDropoffResults(results);
+      } catch (error) {
+        setSearchError("Search failed. Please try again.");
+        setDropoffResults([]);
+      } finally {
+        setIsSearchingDropoff(false);
+      }
+    }, 500);
   }, []);
 
   // Select pickup location
@@ -173,6 +249,36 @@ export const RequestRideButton = ({
       setShowDropoffResults(false);
     }
   };
+
+  // Use current GPS location
+  const useCurrentLocation = useCallback(async () => {
+    if (!geolocation.position) {
+      setErrorMessage("Unable to get your current location. Please enable location services.");
+      return;
+    }
+
+    setIsSearchingPickup(true);
+    try {
+      const address = await reverseGeocode(
+        geolocation.position.latitude,
+        geolocation.position.longitude
+      );
+      
+      const loc = {
+        address: address,
+        latitude: geolocation.position.latitude,
+        longitude: geolocation.position.longitude,
+      };
+      
+      setFormState((prev) => ({ ...prev, pickup: loc }));
+      setPickupSearch(address);
+      setShowPickupResults(false);
+    } catch (error) {
+      setErrorMessage("Failed to get address for your location.");
+    } finally {
+      setIsSearchingPickup(false);
+    }
+  }, [geolocation.position]);
 
   const closeDialog = () => {
     setIsOpen(false);
@@ -262,9 +368,23 @@ export const RequestRideButton = ({
                 Pickup Location
               </Label>
               
+              {/* Current Location Button */}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={useCurrentLocation}
+                disabled={!geolocation.isSupported || isSearchingPickup}
+                className="mb-2"
+              >
+                <Navigation className="mr-2 h-4 w-4" />
+                Use My Current Location
+              </Button>
+              
               {/* Saved Locations Quick Select */}
               {savedLocations.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-2">
+                  <span className="text-xs text-slate-500 w-full mb-1">Or choose saved location:</span>
                   {savedLocations.slice(0, 3).map((loc) => (
                     <Button
                       key={loc.id}
@@ -281,44 +401,66 @@ export const RequestRideButton = ({
                 </div>
               )}
               
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                <Input
-                  id="pickup-search"
-                  placeholder="Search for pickup address... (e.g., Mall Road, Darjeeling)"
-                  value={pickupSearch}
-                  onChange={(e) => handlePickupSearch(e.target.value)}
-                  onFocus={() => pickupSearch.length >= 3 && setShowPickupResults(true)}
-                  className="pl-9 pr-4"
-                />
-                {isSearchingPickup && (
-                  <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-slate-400" />
-                )}
+              <div className="space-y-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                  <Input
+                    id="pickup-search"
+                    placeholder="Type to search... (e.g., Mall Road, Darjeeling)"
+                    value={pickupSearch}
+                    onChange={(e) => handlePickupSearch(e.target.value)}
+                    onFocus={() => pickupSearch.length >= 3 && setShowPickupResults(true)}
+                    className="pl-9 pr-10 text-base"
+                  />
+                  {isSearchingPickup && (
+                    <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-slate-400" />
+                  )}
+                </div>
+                <p className="text-xs text-slate-500">
+                  💡 Type at least 3 characters to search
+                </p>
               </div>
 
               {/* Pickup Search Results */}
-              {showPickupResults && pickupResults.length > 0 && (
-                <div className="border border-slate-200 rounded-lg max-h-48 overflow-y-auto bg-white shadow-lg">
-                  {pickupResults.map((result, index) => (
-                    <button
-                      key={index}
-                      type="button"
-                      onClick={() => selectPickupLocation(result)}
-                      className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b last:border-b-0 transition-colors"
-                    >
-                      <div className="flex items-start gap-2">
-                        <MapPin className="h-4 w-4 mt-0.5 text-emerald-500 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-slate-900 truncate">
-                            {result.display_name.split(',')[0]}
-                          </p>
-                          <p className="text-xs text-slate-500 line-clamp-2">
-                            {result.display_name}
-                          </p>
-                        </div>
-                      </div>
-                    </button>
-                  ))}
+              {showPickupResults && (
+                <div className="border border-slate-200 rounded-lg bg-white shadow-lg">
+                  {isSearchingPickup ? (
+                    <div className="px-4 py-6 text-center text-sm text-slate-500">
+                      <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
+                      Searching...
+                    </div>
+                  ) : pickupResults.length > 0 ? (
+                    <div className="max-h-64 overflow-y-auto">
+                      {pickupResults.map((result, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => selectPickupLocation(result)}
+                          className="w-full text-left px-4 py-3 hover:bg-emerald-50 border-b last:border-b-0 transition-colors"
+                        >
+                          <div className="flex items-start gap-3">
+                            <MapPin className="h-5 w-5 mt-0.5 text-emerald-500 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-slate-900 mb-1">
+                                {result.display_name.split(',').slice(0, 2).join(', ')}
+                              </p>
+                              <p className="text-xs text-slate-500 line-clamp-1">
+                                {result.display_name}
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : searchError ? (
+                    <div className="px-4 py-4 text-center text-sm text-red-600">
+                      {searchError}
+                    </div>
+                  ) : (
+                    <div className="px-4 py-4 text-center text-sm text-slate-500">
+                      No results found. Try a different search.
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -345,6 +487,7 @@ export const RequestRideButton = ({
               {/* Saved Locations Quick Select */}
               {savedLocations.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-2">
+                  <span className="text-xs text-slate-500 w-full mb-1">Or choose saved location:</span>
                   {savedLocations.slice(0, 3).map((loc) => (
                     <Button
                       key={loc.id}
@@ -361,44 +504,66 @@ export const RequestRideButton = ({
                 </div>
               )}
               
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                <Input
-                  id="dropoff-search"
-                  placeholder="Search for destination... (e.g., Ghum Railway Station)"
-                  value={dropoffSearch}
-                  onChange={(e) => handleDropoffSearch(e.target.value)}
-                  onFocus={() => dropoffSearch.length >= 3 && setShowDropoffResults(true)}
-                  className="pl-9 pr-4"
-                />
-                {isSearchingDropoff && (
-                  <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-slate-400" />
-                )}
+              <div className="space-y-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                  <Input
+                    id="dropoff-search"
+                    placeholder="Type to search... (e.g., Ghum Railway Station)"
+                    value={dropoffSearch}
+                    onChange={(e) => handleDropoffSearch(e.target.value)}
+                    onFocus={() => dropoffSearch.length >= 3 && setShowDropoffResults(true)}
+                    className="pl-9 pr-10 text-base"
+                  />
+                  {isSearchingDropoff && (
+                    <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-slate-400" />
+                  )}
+                </div>
+                <p className="text-xs text-slate-500">
+                  💡 Type at least 3 characters to search
+                </p>
               </div>
 
               {/* Dropoff Search Results */}
-              {showDropoffResults && dropoffResults.length > 0 && (
-                <div className="border border-slate-200 rounded-lg max-h-48 overflow-y-auto bg-white shadow-lg">
-                  {dropoffResults.map((result, index) => (
-                    <button
-                      key={index}
-                      type="button"
-                      onClick={() => selectDropoffLocation(result)}
-                      className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b last:border-b-0 transition-colors"
-                    >
-                      <div className="flex items-start gap-2">
-                        <MapPin className="h-4 w-4 mt-0.5 text-sky-500 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-slate-900 truncate">
-                            {result.display_name.split(',')[0]}
-                          </p>
-                          <p className="text-xs text-slate-500 line-clamp-2">
-                            {result.display_name}
-                          </p>
-                        </div>
-                      </div>
-                    </button>
-                  ))}
+              {showDropoffResults && (
+                <div className="border border-slate-200 rounded-lg bg-white shadow-lg">
+                  {isSearchingDropoff ? (
+                    <div className="px-4 py-6 text-center text-sm text-slate-500">
+                      <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
+                      Searching...
+                    </div>
+                  ) : dropoffResults.length > 0 ? (
+                    <div className="max-h-64 overflow-y-auto">
+                      {dropoffResults.map((result, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => selectDropoffLocation(result)}
+                          className="w-full text-left px-4 py-3 hover:bg-sky-50 border-b last:border-b-0 transition-colors"
+                        >
+                          <div className="flex items-start gap-3">
+                            <MapPin className="h-5 w-5 mt-0.5 text-sky-500 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-slate-900 mb-1">
+                                {result.display_name.split(',').slice(0, 2).join(', ')}
+                              </p>
+                              <p className="text-xs text-slate-500 line-clamp-1">
+                                {result.display_name}
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : searchError ? (
+                    <div className="px-4 py-4 text-center text-sm text-red-600">
+                      {searchError}
+                    </div>
+                  ) : (
+                    <div className="px-4 py-4 text-center text-sm text-slate-500">
+                      No results found. Try a different search.
+                    </div>
+                  )}
                 </div>
               )}
 

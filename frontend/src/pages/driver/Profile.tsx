@@ -34,6 +34,9 @@ import { useAuth } from "@/hooks/use-auth";
 import { DispatchTestPanel } from "@/components/dispatch/DispatchTestPanel";
 import { DriverLocationStatus } from "@/components/driver/DriverLocationStatus";
 import { driverService } from "@/lib/driver-service";
+import { useDriverOffers } from "@/hooks/use-driver-offers";
+import { RideOfferNotification } from "@/components/driver/RideOfferNotification";
+import { ActiveRideDisplay } from "@/components/driver/ActiveRideDisplay";
 
 const optionalShortString = z.string().max(160).optional().or(z.literal(""));
 const optionalMediumString = z.string().max(120).optional().or(z.literal(""));
@@ -95,6 +98,39 @@ const DriverProfilePage = () => {
   const [documentType, setDocumentType] = useState("");
   const [documentMetadata, setDocumentMetadata] = useState("");
   const [isSubmittingDocument, setIsSubmittingDocument] = useState(false);
+  const [activeBooking, setActiveBooking] = useState(null);
+  
+  // Driver offers hook - handles real-time ride requests
+  const {
+    currentOffer,
+    isAccepting,
+    isRejecting,
+    acceptOffer,
+    rejectOffer,
+  } = useDriverOffers();
+
+  // Handle offer acceptance
+  const handleAcceptOffer = async (offerId: string) => {
+    const booking = await acceptOffer(offerId);
+    if (booking) {
+      setActiveBooking(booking);
+      toast({
+        title: "Ride Accepted!",
+        description: "Passenger details are now available. Navigate to pickup location.",
+      });
+    }
+  };
+
+  // Handle offer rejection
+  const handleRejectOffer = async (offerId: string, reason?: string) => {
+    const success = await rejectOffer(offerId, reason);
+    if (success) {
+      toast({
+        title: "Ride Rejected",
+        description: "Looking for more ride requests...",
+      });
+    }
+  };
 
   const formValues = useMemo<DriverSettingsValues>(() => {
     if (profile?.role === "driver") {
@@ -356,6 +392,26 @@ const DriverProfilePage = () => {
 
         <main className="mt-10 grid gap-10 lg:grid-cols-[2fr,1fr]">
           <section className="space-y-8">
+            {/* Active Booking Display */}
+            {activeBooking && (
+              <ActiveRideDisplay
+                booking={activeBooking}
+                onStartTrip={() => {
+                  toast({
+                    title: "Trip Started",
+                    description: "Heading to dropoff location",
+                  });
+                }}
+                onCompleteTrip={() => {
+                  toast({
+                    title: "Trip Completed",
+                    description: "Great job! Ready for next ride.",
+                  });
+                  setActiveBooking(null);
+                }}
+              />
+            )}
+
             {/* GPS-based Location & Status */}
             {session?.token && profile.role === "driver" && (
               <DriverLocationStatus
@@ -776,6 +832,15 @@ const DriverProfilePage = () => {
           </aside>
         </main>
       </div>
+
+      {/* Ride Offer Notification Overlay */}
+      <RideOfferNotification
+        offer={currentOffer}
+        isAccepting={isAccepting}
+        isRejecting={isRejecting}
+        onAccept={handleAcceptOffer}
+        onReject={handleRejectOffer}
+      />
     </div>
   );
 };

@@ -19,11 +19,26 @@ export type DispatchOffer = {
   id: string;
   bookingId: string;
   passengerId: string;
+  driverId: string;
+  pickup: LocationPoint;
+  dropoff: LocationPoint;
+  fareQuote?: {
+    amount: number;
+    currency: string;
+    breakdown?: Array<{ label: string; amount: number }>;
+  };
+  passenger?: {
+    name: string;
+    phone?: string;
+    rating?: number;
+  };
+  expiresAt: string;
   createdAt: string;
   status: "pending" | "accepted" | "declined" | "expired";
 };
 
 export type RejectOfferPayload = {
+  reason?: string;
   etaMinutes?: number;
 };
 

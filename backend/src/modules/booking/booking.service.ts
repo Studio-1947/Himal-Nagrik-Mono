@@ -21,8 +21,13 @@ class BookingError extends Error {
 }
 
 const computeFareQuote = async (payload: CreateBookingInput): Promise<FareQuote> => {
-  const pickup = payload.pickupLocation as LocationPoint;
-  const dropoff = payload.dropoffLocation as LocationPoint;
+  const pickup = payload.pickup as LocationPoint;
+  const dropoff = payload.dropoff as LocationPoint;
+  
+  // Validate that pickup and dropoff are present
+  if (!pickup || !dropoff) {
+    throw new BookingError("Pickup and dropoff locations are required", 400);
+  }
   
   // Get current surge multiplier for the pickup location
   const surgeMultiplier = await getCurrentSurgeMultiplier(pickup);
