@@ -33,18 +33,21 @@ const StylisedFallbackMap = () => (
 
 const createDriverMarkerElement = (etaMinutes: number) => {
   const wrapper = document.createElement("div");
-  wrapper.style.width = "40px";
-  wrapper.style.height = "40px";
+  wrapper.style.width = "60px";
+  wrapper.style.height = "60px";
   wrapper.style.position = "relative";
   wrapper.style.cursor = "pointer";
   wrapper.style.transition = "transform 0.2s ease";
+  wrapper.style.display = "flex";
+  wrapper.style.flexDirection = "column";
+  wrapper.style.alignItems = "center";
   
   // Pulsing animation ring
   const pulseRing = document.createElement("div");
   pulseRing.style.position = "absolute";
-  pulseRing.style.top = "50%";
+  pulseRing.style.top = "8px";
   pulseRing.style.left = "50%";
-  pulseRing.style.transform = "translate(-50%, -50%)";
+  pulseRing.style.transform = "translate(-50%, 0)";
   pulseRing.style.width = "40px";
   pulseRing.style.height = "40px";
   pulseRing.style.borderRadius = "50%";
@@ -55,9 +58,9 @@ const createDriverMarkerElement = (etaMinutes: number) => {
   // Car icon container
   const carContainer = document.createElement("div");
   carContainer.style.position = "absolute";
-  carContainer.style.top = "50%";
+  carContainer.style.top = "8px";
   carContainer.style.left = "50%";
-  carContainer.style.transform = "translate(-50%, -50%)";
+  carContainer.style.transform = "translate(-50%, 0)";
   carContainer.style.width = "32px";
   carContainer.style.height = "32px";
   carContainer.style.backgroundColor = "#0ea5e9";
@@ -84,21 +87,39 @@ const createDriverMarkerElement = (etaMinutes: number) => {
   carContainer.appendChild(carSvg);
   wrapper.appendChild(carContainer);
 
+  // Driver label
+  const driverLabel = document.createElement("div");
+  driverLabel.style.position = "absolute";
+  driverLabel.style.top = "42px";
+  driverLabel.style.left = "50%";
+  driverLabel.style.transform = "translateX(-50%)";
+  driverLabel.style.backgroundColor = "rgba(14, 165, 233, 0.95)";
+  driverLabel.style.color = "white";
+  driverLabel.style.padding = "2px 8px";
+  driverLabel.style.borderRadius = "6px";
+  driverLabel.style.fontSize = "9px";
+  driverLabel.style.fontWeight = "700";
+  driverLabel.style.letterSpacing = "0.05em";
+  driverLabel.style.whiteSpace = "nowrap";
+  driverLabel.style.border = "1px solid rgba(255, 255, 255, 0.3)";
+  driverLabel.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.3)";
+  driverLabel.textContent = "DRIVER";
+  wrapper.appendChild(driverLabel);
+
   // ETA badge
   const etaBadge = document.createElement("div");
   etaBadge.style.position = "absolute";
-  etaBadge.style.bottom = "-8px";
-  etaBadge.style.left = "50%";
-  etaBadge.style.transform = "translateX(-50%)";
+  etaBadge.style.top = "-2px";
+  etaBadge.style.right = "2px";
   etaBadge.style.backgroundColor = "rgba(15, 23, 42, 0.95)";
-  etaBadge.style.color = "white";
+  etaBadge.style.color = "#22d3ee";
   etaBadge.style.padding = "2px 6px";
   etaBadge.style.borderRadius = "8px";
   etaBadge.style.fontSize = "10px";
-  etaBadge.style.fontWeight = "600";
+  etaBadge.style.fontWeight = "700";
   etaBadge.style.whiteSpace = "nowrap";
-  etaBadge.style.border = "1px solid rgba(255, 255, 255, 0.2)";
-  etaBadge.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.3)";
+  etaBadge.style.border = "1px solid rgba(34, 211, 238, 0.3)";
+  etaBadge.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.4)";
   etaBadge.textContent = `${etaMinutes}m`;
   wrapper.appendChild(etaBadge);
 
@@ -135,10 +156,13 @@ const createDriverMarkerElement = (etaMinutes: number) => {
 
 const createPassengerMarkerElement = () => {
   const wrapper = document.createElement("div");
-  wrapper.style.width = "36px";
-  wrapper.style.height = "36px";
+  wrapper.style.width = "48px";
+  wrapper.style.height = "56px";
   wrapper.style.position = "relative";
   wrapper.style.cursor = "pointer";
+  wrapper.style.display = "flex";
+  wrapper.style.flexDirection = "column";
+  wrapper.style.alignItems = "center";
   
   // Pin body
   const pinBody = document.createElement("div");
@@ -146,8 +170,8 @@ const createPassengerMarkerElement = () => {
   pinBody.style.top = "0";
   pinBody.style.left = "50%";
   pinBody.style.transform = "translateX(-50%)";
-  pinBody.style.width = "24px";
-  pinBody.style.height = "24px";
+  pinBody.style.width = "30px";
+  pinBody.style.height = "30px";
   pinBody.style.backgroundColor = "#10b981";
   pinBody.style.borderRadius = "50% 50% 50% 0";
   pinBody.style.transform = "translateX(-50%) rotate(-45deg)";
@@ -160,12 +184,31 @@ const createPassengerMarkerElement = () => {
   pinDot.style.top = "50%";
   pinDot.style.left = "50%";
   pinDot.style.transform = "translate(-50%, -50%) rotate(45deg)";
-  pinDot.style.width = "8px";
-  pinDot.style.height = "8px";
+  pinDot.style.width = "10px";
+  pinDot.style.height = "10px";
   pinDot.style.backgroundColor = "white";
   pinDot.style.borderRadius = "50%";
   pinBody.appendChild(pinDot);
   wrapper.appendChild(pinBody);
+
+  // "YOU" Label
+  const youLabel = document.createElement("div");
+  youLabel.style.position = "absolute";
+  youLabel.style.top = "34px";
+  youLabel.style.left = "50%";
+  youLabel.style.transform = "translateX(-50%)";
+  youLabel.style.backgroundColor = "rgba(16, 185, 129, 0.95)";
+  youLabel.style.color = "white";
+  youLabel.style.padding = "3px 10px";
+  youLabel.style.borderRadius = "8px";
+  youLabel.style.fontSize = "10px";
+  youLabel.style.fontWeight = "700";
+  youLabel.style.letterSpacing = "0.1em";
+  youLabel.style.whiteSpace = "nowrap";
+  youLabel.style.border = "2px solid white";
+  youLabel.style.boxShadow = "0 2px 6px rgba(0, 0, 0, 0.4)";
+  youLabel.textContent = "YOU";
+  wrapper.appendChild(youLabel);
 
   // Shadow
   const shadow = document.createElement("div");
@@ -173,9 +216,9 @@ const createPassengerMarkerElement = () => {
   shadow.style.bottom = "0";
   shadow.style.left = "50%";
   shadow.style.transform = "translateX(-50%)";
-  shadow.style.width = "12px";
+  shadow.style.width = "16px";
   shadow.style.height = "4px";
-  shadow.style.backgroundColor = "rgba(0, 0, 0, 0.2)";
+  shadow.style.backgroundColor = "rgba(0, 0, 0, 0.25)";
   shadow.style.borderRadius = "50%";
   shadow.style.filter = "blur(2px)";
   wrapper.appendChild(shadow);
@@ -622,16 +665,16 @@ export const PassengerMap = ({
 
       if (map.isStyleLoaded()) {
         map.fitBounds(bounds, {
-          padding: { top: 80, bottom: 80, left: 80, right: 80 },
-          maxZoom: 15,
+          padding: { top: 100, bottom: 100, left: 100, right: 100 },
+          maxZoom: 17,
           animate: true,
           duration: 800,
         });
       } else {
         map.once("load", () => {
           map.fitBounds(bounds, {
-            padding: { top: 80, bottom: 80, left: 80, right: 80 },
-            maxZoom: 15,
+            padding: { top: 100, bottom: 100, left: 100, right: 100 },
+            maxZoom: 17,
             animate: true,
             duration: 800,
           });
