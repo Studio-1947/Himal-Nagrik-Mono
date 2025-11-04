@@ -31,6 +31,7 @@ import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { usePassengerDashboard } from "@/hooks/use-passenger-dashboard";
 import { PassengerMap } from "@/features/passenger/dashboard/PassengerMap";
+import { RequestRideButton } from "@/features/passenger/dashboard/RequestRideButton";
 
 const passengerSettingsSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters" }),
@@ -243,6 +244,23 @@ const PassengerProfilePage = () => {
 
         <main className="mt-10 grid gap-10 lg:grid-cols-[2fr,1fr]">
           <section className="space-y-8">
+            {/* Booking Button - Prominent at the top */}
+            {dashboardSummary && (
+              <div className="flex justify-center">
+                <RequestRideButton
+                  savedLocations={dashboardSummary.savedLocations}
+                  defaultPickup={dashboardSummary.passenger.defaultLocation}
+                  onSuccess={() => {
+                    toast({
+                      title: "Ride requested!",
+                      description: "We're finding you a driver. Check your active booking below.",
+                    });
+                    void refreshDashboard();
+                  }}
+                />
+              </div>
+            )}
+            
             {dashboardSummary ? (
               <PassengerMap 
                 summary={dashboardSummary}

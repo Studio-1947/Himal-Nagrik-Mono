@@ -90,19 +90,19 @@ const createDriverMarkerElement = (etaMinutes: number) => {
   // Driver label
   const driverLabel = document.createElement("div");
   driverLabel.style.position = "absolute";
-  driverLabel.style.top = "42px";
+  driverLabel.style.top = "44px";
   driverLabel.style.left = "50%";
   driverLabel.style.transform = "translateX(-50%)";
-  driverLabel.style.backgroundColor = "rgba(14, 165, 233, 0.95)";
+  driverLabel.style.backgroundColor = "#0ea5e9";
   driverLabel.style.color = "white";
-  driverLabel.style.padding = "2px 8px";
-  driverLabel.style.borderRadius = "6px";
-  driverLabel.style.fontSize = "9px";
-  driverLabel.style.fontWeight = "700";
-  driverLabel.style.letterSpacing = "0.05em";
+  driverLabel.style.padding = "4px 10px";
+  driverLabel.style.borderRadius = "8px";
+  driverLabel.style.fontSize = "10px";
+  driverLabel.style.fontWeight = "800";
+  driverLabel.style.letterSpacing = "0.08em";
   driverLabel.style.whiteSpace = "nowrap";
-  driverLabel.style.border = "1px solid rgba(255, 255, 255, 0.3)";
-  driverLabel.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.3)";
+  driverLabel.style.border = "2px solid white";
+  driverLabel.style.boxShadow = "0 3px 8px rgba(0, 0, 0, 0.4)";
   driverLabel.textContent = "DRIVER";
   wrapper.appendChild(driverLabel);
 
@@ -194,19 +194,19 @@ const createPassengerMarkerElement = () => {
   // "YOU" Label
   const youLabel = document.createElement("div");
   youLabel.style.position = "absolute";
-  youLabel.style.top = "34px";
+  youLabel.style.top = "36px";
   youLabel.style.left = "50%";
   youLabel.style.transform = "translateX(-50%)";
-  youLabel.style.backgroundColor = "rgba(16, 185, 129, 0.95)";
+  youLabel.style.backgroundColor = "#10b981";
   youLabel.style.color = "white";
-  youLabel.style.padding = "3px 10px";
-  youLabel.style.borderRadius = "8px";
-  youLabel.style.fontSize = "10px";
-  youLabel.style.fontWeight = "700";
-  youLabel.style.letterSpacing = "0.1em";
+  youLabel.style.padding = "4px 12px";
+  youLabel.style.borderRadius = "10px";
+  youLabel.style.fontSize = "11px";
+  youLabel.style.fontWeight = "800";
+  youLabel.style.letterSpacing = "0.12em";
   youLabel.style.whiteSpace = "nowrap";
-  youLabel.style.border = "2px solid white";
-  youLabel.style.boxShadow = "0 2px 6px rgba(0, 0, 0, 0.4)";
+  youLabel.style.border = "2.5px solid white";
+  youLabel.style.boxShadow = "0 3px 8px rgba(0, 0, 0, 0.5)";
   youLabel.textContent = "YOU";
   wrapper.appendChild(youLabel);
 
@@ -312,6 +312,8 @@ export const PassengerMap = ({
 
   const [mapError, setMapError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
+  // Default to showing individual driver markers (false = markers, true = heatmap)
+  // This provides the clearest view with driver labels and ETA badges
   const [showHeatmap, setShowHeatmap] = useState(false);
 
   const boundsCoordinates = useMemo(() => {
