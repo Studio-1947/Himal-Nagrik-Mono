@@ -8,9 +8,11 @@ import DriverSignupPage from "@/pages/auth/DriverSignup";
 import PassengerLoginPage from "@/pages/auth/PassengerLogin";
 import PassengerSignupPage from "@/pages/auth/PassengerSignup";
 import DriverProfilePage from "@/pages/driver/Profile";
+import DriverEarningsPage from "@/pages/driver/Earnings";
 import Index from "@/pages/index";
 import NotFound from "@/pages/NotFound";
 import PassengerProfilePage from "@/pages/passenger/Profile";
+import TripHistoryPage from "@/pages/TripHistory";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
@@ -42,6 +44,22 @@ const App = () => (
               element={
                 <ProtectedRoute requiredRole="driver">
                   <DriverProfilePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/driver/earnings"
+              element={
+                <ProtectedRoute requiredRole="driver">
+                  <DriverEarningsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/trips/history"
+              element={
+                <ProtectedRoute>
+                  <TripHistoryPage />
                 </ProtectedRoute>
               }
             />

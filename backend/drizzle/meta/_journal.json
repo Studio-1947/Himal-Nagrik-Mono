@@ -8,6 +8,13 @@
       "when": 1761367259462,
       "tag": "0000_tan_chameleon",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1762234162821,
+      "tag": "0001_lying_sphinx",
+      "breakpoints": true
     }
   ]
 }

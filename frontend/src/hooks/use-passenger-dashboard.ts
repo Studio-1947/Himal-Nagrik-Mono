@@ -1,5 +1,4 @@
-
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   passengerService,
@@ -7,6 +6,10 @@ import {
   type PassengerDashboardSummary,
 } from "@/lib/passenger-service";
 import { useAuth } from "@/hooks/use-auth";
+import { realtimeClient, type RealtimeEvent } from "@/lib/realtime";
+import { useGeolocation } from "@/hooks/use-geolocation";
+
+const MAX_EVENTS = 10;
 
 export const usePassengerDashboard = () => {
   const { session } = useAuth();
@@ -15,6 +18,17 @@ export const usePassengerDashboard = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState<FetchDashboardSummaryParams | undefined>();
+  const [events, setEvents] = useState<RealtimeEvent[]>([]);
+  const [useRealLocation, setUseRealLocation] = useState(true);
+  const refreshTimeoutRef = useRef<number | null>(null);
+  
+  // Get user's real-time location
+  const geolocation = useGeolocation({
+    enableHighAccuracy: true,
+    watch: true, // Continuously update location
+    timeout: 15000,
+    maximumAge: 30000, // Use cached location if less than 30 seconds old
+  });
 
   const canLoad = useMemo(() => Boolean(token), [token]);
 
@@ -24,7 +38,17 @@ export const usePassengerDashboard = () => {
         return;
       }
 
-      const params = overrideParams ?? query;
+      let params = overrideParams ?? query;
+      
+      // Use real-time location if available and enabled
+      if (useRealLocation && geolocation.position && !overrideParams) {
+        params = {
+          ...params,
+          lat: geolocation.position.latitude,
+          lng: geolocation.position.longitude,
+        };
+      }
+      
       if (overrideParams) {
         setQuery(overrideParams);
       }
@@ -42,7 +66,7 @@ export const usePassengerDashboard = () => {
         setIsLoading(false);
       }
     },
-    [token, query],
+    [token, query, useRealLocation, geolocation.position],
   );
 
   useEffect(() => {
@@ -65,6 +89,66 @@ export const usePassengerDashboard = () => {
     };
   }, [canLoad, loadDashboard]);
 
+  const scheduleRealtimeRefresh = useCallback(
+    (overrideParams?: FetchDashboardSummaryParams) => {
+      if (refreshTimeoutRef.current !== null) {
+        return;
+      }
+      refreshTimeoutRef.current = window.setTimeout(() => {
+        refreshTimeoutRef.current = null;
+        void loadDashboard(overrideParams);
+      }, 1200);
+    },
+    [loadDashboard],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (refreshTimeoutRef.current !== null) {
+        window.clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!summary) {
+      return;
+    }
+
+    const unsubscribes: Array<() => void> = [];
+
+    unsubscribes.push(
+      realtimeClient.subscribe("dispatch:availability", (event) => {
+        if (event.type === "dispatch.availability") {
+          scheduleRealtimeRefresh();
+        }
+      }),
+    );
+
+    const passengerChannel = `passenger:${summary.passenger.id}`;
+    unsubscribes.push(
+      realtimeClient.subscribe(passengerChannel, (event) => {
+        if (event.type.startsWith("booking.")) {
+          setEvents((prev) => [...prev.slice(-MAX_EVENTS + 1), event]);
+          scheduleRealtimeRefresh();
+        }
+      }),
+    );
+
+    return () => {
+      unsubscribes.forEach((unsubscribe) => unsubscribe());
+    };
+  }, [summary, scheduleRealtimeRefresh]);
+
+  // Refresh dashboard when location updates
+  useEffect(() => {
+    if (canLoad && geolocation.position && useRealLocation) {
+      void loadDashboard();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canLoad, geolocation.position?.latitude, geolocation.position?.longitude, useRealLocation]);
+
   return {
     summary,
     isLoading: isLoading && !summary,
@@ -76,5 +160,14 @@ export const usePassengerDashboard = () => {
       void loadDashboard(params);
     },
     currentQuery: query,
+    events,
+    // Location-related
+    geolocation,
+    useRealLocation,
+    setUseRealLocation,
+    currentLocation: geolocation.position ? {
+      latitude: geolocation.position.latitude,
+      longitude: geolocation.position.longitude,
+    } : null,
   };
 };

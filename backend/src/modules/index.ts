@@ -7,6 +7,7 @@ import { dispatchModule } from './dispatch';
 import { driverModule } from './driver';
 import { passengerModule } from './passenger';
 import { paymentModule } from './payment';
+import { ratingModule } from './rating';
 import { supportModule } from './support';
 import { tripModule } from './trip';
 import type { ModuleDefinition } from './types';
@@ -19,6 +20,7 @@ const candidateModules: ModuleDefinition[] = [
   dispatchModule,
   tripModule,
   paymentModule,
+  ratingModule,
   supportModule,
   adminModule,
 ];

@@ -1,15 +1,9 @@
-import { Router } from 'express';
-
+import { supportRouter } from './http/router';
 import type { ModuleDefinition } from '../types';
 
-const router = Router();
-
-/**
- * Customer support tooling (tickets, escalations) placeholder.
- */
 export const supportModule: ModuleDefinition = {
   name: 'support',
   basePath: '/support',
-  router,
-  enabled: false,
+  router: supportRouter,
+  enabled: true,
 };

@@ -32,7 +32,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { DispatchTestPanel } from "@/components/dispatch/DispatchTestPanel";
+import { DriverLocationStatus } from "@/components/driver/DriverLocationStatus";
 import { driverService } from "@/lib/driver-service";
+import { useDriverOffers } from "@/hooks/use-driver-offers";
+import { RideOfferNotification } from "@/components/driver/RideOfferNotification";
+import { ActiveRideDisplay } from "@/components/driver/ActiveRideDisplay";
 
 const optionalShortString = z.string().max(160).optional().or(z.literal(""));
 const optionalMediumString = z.string().max(120).optional().or(z.literal(""));
@@ -94,6 +98,39 @@ const DriverProfilePage = () => {
   const [documentType, setDocumentType] = useState("");
   const [documentMetadata, setDocumentMetadata] = useState("");
   const [isSubmittingDocument, setIsSubmittingDocument] = useState(false);
+  const [activeBooking, setActiveBooking] = useState(null);
+  
+  // Driver offers hook - handles real-time ride requests
+  const {
+    currentOffer,
+    isAccepting,
+    isRejecting,
+    acceptOffer,
+    rejectOffer,
+  } = useDriverOffers();
+
+  // Handle offer acceptance
+  const handleAcceptOffer = async (offerId: string) => {
+    const booking = await acceptOffer(offerId);
+    if (booking) {
+      setActiveBooking(booking);
+      toast({
+        title: "Ride Accepted!",
+        description: "Passenger details are now available. Navigate to pickup location.",
+      });
+    }
+  };
+
+  // Handle offer rejection
+  const handleRejectOffer = async (offerId: string, reason?: string) => {
+    const success = await rejectOffer(offerId, reason);
+    if (success) {
+      toast({
+        title: "Ride Rejected",
+        description: "Looking for more ride requests...",
+      });
+    }
+  };
 
   const formValues = useMemo<DriverSettingsValues>(() => {
     if (profile?.role === "driver") {
@@ -355,49 +392,54 @@ const DriverProfilePage = () => {
 
         <main className="mt-10 grid gap-10 lg:grid-cols-[2fr,1fr]">
           <section className="space-y-8">
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-white">
-                    Availability
-                  </h2>
-                  <p className="text-sm text-slate-300">
-                    Toggle your dispatch status when you are ready to accept
-                    rides.
-                  </p>
-                </div>
-                <Badge
-                  className={
-                    profile.availability.isActive ?? true
-                      ? "bg-emerald-500/15 text-emerald-200"
-                      : "bg-slate-700/40 text-slate-200"
-                  }
-                >
-                  {profile.availability.isActive ?? true ? "Online" : "Offline"}
-                </Badge>
-              </div>
-              <Button
-                className="mt-4"
-                variant={
-                  profile.availability.isActive ?? true ? "outline" : "default"
-                }
-                onClick={handleToggleAvailability}
-                disabled={isTogglingAvailability}
-              >
-                {isTogglingAvailability
-                  ? "Updating..."
-                  : profile.availability.isActive ?? true
-                  ? "Go offline"
-                  : "Go online"}
-              </Button>
-            </div>
-
-            {session?.token && profile.role === "driver" ? (
-              <DispatchTestPanel
-                token={session.token}
-                defaultCapacity={profile.vehicle.capacity}
+            {/* Active Booking Display */}
+            {activeBooking && (
+              <ActiveRideDisplay
+                booking={activeBooking}
+                onStartTrip={() => {
+                  toast({
+                    title: "Trip Started",
+                    description: "Heading to dropoff location",
+                  });
+                }}
+                onCompleteTrip={() => {
+                  toast({
+                    title: "Trip Completed",
+                    description: "Great job! Ready for next ride.",
+                  });
+                  setActiveBooking(null);
+                }}
               />
-            ) : null}
+            )}
+
+            {/* GPS-based Location & Status */}
+            {session?.token && profile.role === "driver" && (
+              <DriverLocationStatus
+                token={session.token}
+                capacity={profile.vehicle.capacity}
+                onStatusChange={(isOnline) => {
+                  console.log('[Driver Profile] Status changed:', isOnline);
+                }}
+              />
+            )}
+
+            {/* Legacy Manual Dispatch Panel (for testing/manual override) */}
+            {session?.token && profile.role === "driver" && (
+              <details className="group">
+                <summary className="cursor-pointer rounded-2xl border border-white/10 bg-white/5 p-4 text-sm font-medium text-white hover:bg-white/10">
+                  <span className="inline-flex items-center gap-2">
+                    <span className="transition-transform group-open:rotate-90">▶</span>
+                    Manual Dispatch Controls (Advanced)
+                  </span>
+                </summary>
+                <div className="mt-4">
+                  <DispatchTestPanel
+                    token={session.token}
+                    defaultCapacity={profile.vehicle.capacity}
+                  />
+                </div>
+              </details>
+            )}
 
             <div className="rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur-xl">
               <h2 className="text-lg font-semibold text-white">
@@ -790,6 +832,15 @@ const DriverProfilePage = () => {
           </aside>
         </main>
       </div>
+
+      {/* Ride Offer Notification Overlay */}
+      <RideOfferNotification
+        offer={currentOffer}
+        isAccepting={isAccepting}
+        isRejecting={isRejecting}
+        onAccept={handleAcceptOffer}
+        onReject={handleRejectOffer}
+      />
     </div>
   );
 };

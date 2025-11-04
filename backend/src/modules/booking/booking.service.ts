@@ -3,11 +3,13 @@ import { dispatchService } from "../dispatch/dispatch.service";
 import { bookingRepository } from "./booking.repository";
 import { enqueueBookingRequest } from "./booking.queue";
 import { triggerDispatchWorker } from "../dispatch/dispatch.worker";
+import { calculateFare, getCurrentSurgeMultiplier } from "./fare.service";
 import type {
   BookingRecord,
   BookingResponse,
   CreateBookingInput,
   FareQuote,
+  LocationPoint,
 } from "./booking.types";
 import { mapBookingRecordToResponse } from "./booking.mapper";
 
@@ -18,16 +20,30 @@ class BookingError extends Error {
   }
 }
 
-const BASE_FARE_AMOUNT = 120;
-
-const computeFareQuote = (_payload: CreateBookingInput): FareQuote => ({
-  currency: "INR",
-  amount: BASE_FARE_AMOUNT,
-  breakdown: [
-    { label: "Base fare", amount: BASE_FARE_AMOUNT - 20 },
-    { label: "Fuel surcharge", amount: 20 },
-  ],
-});
+const computeFareQuote = async (payload: CreateBookingInput): Promise<FareQuote> => {
+  const pickup = payload.pickup as LocationPoint;
+  const dropoff = payload.dropoff as LocationPoint;
+  
+  // Validate that pickup and dropoff are present
+  if (!pickup || !dropoff) {
+    throw new BookingError("Pickup and dropoff locations are required", 400);
+  }
+  
+  // Get current surge multiplier for the pickup location
+  const surgeMultiplier = await getCurrentSurgeMultiplier(pickup);
+  
+  // Calculate fare with surge pricing
+  const fareCalculation = calculateFare(pickup, dropoff, {
+    scheduledTime: payload.scheduledAt ? new Date(payload.scheduledAt) : undefined,
+    surgeMultiplier,
+  });
+  
+  return {
+    currency: fareCalculation.currency,
+    amount: fareCalculation.amount,
+    breakdown: fareCalculation.breakdown,
+  };
+};
 
 const computePriorityScore = (record: BookingRecord): number =>
   record.scheduledAt instanceof Date
@@ -50,7 +66,7 @@ export const bookingService = {
     payload: CreateBookingInput,
   ): Promise<BookingResponse> {
     const passenger = ensurePassengerUser(user);
-    const fareQuote = computeFareQuote(payload);
+    const fareQuote = await computeFareQuote(payload);
     const record = await bookingRepository.createBooking(
       passenger.id,
       payload,

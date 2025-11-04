@@ -104,3 +104,50 @@ export const apiRequest = async <TResponse, TBody = unknown>(
   return data as TResponse;
 };
 
+// Export a convenient apiClient object with common HTTP methods
+export const apiClient = {
+  get: async <TResponse>(url: string, options?: ApiRequestOptions) => {
+    return apiRequest<TResponse>(url, { ...options, method: 'GET' });
+  },
+
+  post: async <TResponse, TBody = unknown>(
+    url: string,
+    data?: TBody,
+    options?: ApiRequestOptions<TBody>
+  ) => {
+    return apiRequest<TResponse, TBody>(url, {
+      ...options,
+      method: 'POST',
+      json: data,
+    });
+  },
+
+  put: async <TResponse, TBody = unknown>(
+    url: string,
+    data?: TBody,
+    options?: ApiRequestOptions<TBody>
+  ) => {
+    return apiRequest<TResponse, TBody>(url, {
+      ...options,
+      method: 'PUT',
+      json: data,
+    });
+  },
+
+  patch: async <TResponse, TBody = unknown>(
+    url: string,
+    data?: TBody,
+    options?: ApiRequestOptions<TBody>
+  ) => {
+    return apiRequest<TResponse, TBody>(url, {
+      ...options,
+      method: 'PATCH',
+      json: data,
+    });
+  },
+
+  delete: async <TResponse>(url: string, options?: ApiRequestOptions) => {
+    return apiRequest<TResponse>(url, { ...options, method: 'DELETE' });
+  },
+};
+

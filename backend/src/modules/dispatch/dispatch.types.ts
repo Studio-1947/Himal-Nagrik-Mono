@@ -22,6 +22,23 @@ export type DispatchOffer = {
   status: 'pending' | 'accepted' | 'declined' | 'expired';
 };
 
+export type EnrichedDispatchOffer = DispatchOffer & {
+  driverId: string;
+  pickup: LocationPoint;
+  dropoff: LocationPoint;
+  expiresAt: string;
+  fareQuote?: {
+    amount: number;
+    currency: string;
+    breakdown?: Array<{ label: string; amount: number }>;
+  };
+  passenger?: {
+    name: string;
+    phone?: string;
+    rating?: number;
+  };
+};
+
 export type NearbyDriverAvailability = {
   driverId: string;
   location: LocationPoint;
