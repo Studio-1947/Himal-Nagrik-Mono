@@ -59,6 +59,10 @@ const PassengerProfilePage = () => {
     isRefreshing: isDashboardRefreshing,
     refresh: refreshDashboard,
     setFocus: setDashboardFocus,
+    geolocation,
+    useRealLocation,
+    setUseRealLocation,
+    currentLocation,
   } = usePassengerDashboard();
   const navigate = useNavigate();
   const formValues = useMemo<PassengerSettingsValues>(() => {
@@ -240,7 +244,13 @@ const PassengerProfilePage = () => {
         <main className="mt-10 grid gap-10 lg:grid-cols-[2fr,1fr]">
           <section className="space-y-8">
             {dashboardSummary ? (
-              <PassengerMap summary={dashboardSummary} />
+              <PassengerMap 
+                summary={dashboardSummary}
+                currentLocation={currentLocation}
+                useRealLocation={useRealLocation}
+                onToggleRealLocation={() => setUseRealLocation(!useRealLocation)}
+                locationError={geolocation.error?.message}
+              />
             ) : isDashboardLoading ? (
               <div className="h-80 animate-pulse rounded-3xl border border-white/10 bg-white/5" />
             ) : null}

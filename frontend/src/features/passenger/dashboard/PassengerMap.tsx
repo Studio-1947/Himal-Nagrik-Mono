@@ -1,6 +1,7 @@
 ﻿import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { PassengerDashboardSummary } from "@/lib/passenger-service";
+import type { GeolocationPosition } from "@/hooks/use-geolocation";
 import {
   MAP_ATTRIBUTION,
   MAP_DEFAULT_PITCH,
@@ -10,12 +11,19 @@ import {
 
 type PassengerMapProps = {
   summary: PassengerDashboardSummary;
+  currentLocation?: GeolocationPosition | null;
+  useRealLocation?: boolean;
+  onToggleRealLocation?: () => void;
+  locationError?: string | null;
 };
 
 type MapLibreModule = typeof import("maplibre-gl");
 
 const RADIUS_SOURCE_ID = "passenger-radius-source";
 const RADIUS_LAYER_ID = "passenger-radius-layer";
+const HEATMAP_SOURCE_ID = "driver-heatmap-source";
+const HEATMAP_LAYER_ID = "driver-heatmap-layer";
+const HEATMAP_POINT_LAYER_ID = "driver-heatmap-points";
 
 const StylisedFallbackMap = () => (
   <div className="flex h-72 items-center justify-center rounded-2xl border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900/60 to-slate-900 text-sm text-slate-300">
@@ -208,13 +216,51 @@ const createCircleGeoJSON = (
   };
 };
 
-export const PassengerMap = ({ summary }: PassengerMapProps) => {
+export const PassengerMap = ({ 
+  summary, 
+  currentLocation,
+  useRealLocation = false,
+  onToggleRealLocation,
+  locationError,
+}: PassengerMapProps) => {
   const driverLocations = summary.driverAvailability.drivers;
-  const passengerLocation =
-    summary.passenger.defaultLocation?.location ??
-    driverLocations[0]?.location ??
-    null;
+  
+  // Determine which location to use: real-time GPS or saved location
+  const passengerLocation = useMemo(() => {
+    if (useRealLocation && currentLocation) {
+      return {
+        latitude: currentLocation.latitude,
+        longitude: currentLocation.longitude,
+      };
+    }
+    return summary.passenger.defaultLocation?.location ?? 
+           driverLocations[0]?.location ?? 
+           null;
+  }, [useRealLocation, currentLocation, summary.passenger.defaultLocation, driverLocations]);
+  
   const radiusKm = summary.driverAvailability.radiusKm;
+  const isUsingRealLocation = useRealLocation && currentLocation && passengerLocation;
+
+  // Debug: Log location coordinates to help identify issues
+  useEffect(() => {
+    if (passengerLocation?.latitude != null && passengerLocation?.longitude != null) {
+      console.log('[Map Debug] Passenger Location:', {
+        source: isUsingRealLocation ? 'GPS (Real-time)' : 'Saved Location',
+        latitude: passengerLocation.latitude,
+        longitude: passengerLocation.longitude,
+        accuracy: currentLocation?.accuracy ? `±${Math.round(currentLocation.accuracy)}m` : 'N/A',
+        formatted: `${passengerLocation.latitude}, ${passengerLocation.longitude}`,
+        googleMapsLink: `https://www.google.com/maps?q=${passengerLocation.latitude},${passengerLocation.longitude}`,
+      });
+    }
+    if (driverLocations.length > 0) {
+      console.log('[Map Debug] Driver Locations:', driverLocations.map(d => ({
+        driverId: d.driverId,
+        latitude: d.location?.latitude,
+        longitude: d.location?.longitude,
+      })));
+    }
+  }, [passengerLocation, driverLocations, isUsingRealLocation, currentLocation]);
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import("maplibre-gl").Map | null>(null);
@@ -223,6 +269,7 @@ export const PassengerMap = ({ summary }: PassengerMapProps) => {
 
   const [mapError, setMapError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [showHeatmap, setShowHeatmap] = useState(false);
 
   const boundsCoordinates = useMemo(() => {
     if (!passengerLocation) {
@@ -294,6 +341,137 @@ export const PassengerMap = ({ summary }: PassengerMapProps) => {
             });
           }
 
+          // Add heatmap source
+          if (!map.getSource(HEATMAP_SOURCE_ID)) {
+            map.addSource(HEATMAP_SOURCE_ID, {
+              type: "geojson",
+              data: { type: "FeatureCollection", features: [] },
+            });
+          }
+
+          // Add heatmap layer
+          if (!map.getLayer(HEATMAP_LAYER_ID)) {
+            map.addLayer({
+              id: HEATMAP_LAYER_ID,
+              type: "heatmap",
+              source: HEATMAP_SOURCE_ID,
+              paint: {
+                // Increase the heatmap weight based on frequency and property magnitude
+                "heatmap-weight": [
+                  "interpolate",
+                  ["linear"],
+                  ["get", "weight"],
+                  0,
+                  0,
+                  6,
+                  1,
+                ],
+                // Increase the heatmap color weight by zoom level
+                // heatmap-intensity is a multiplier on top of heatmap-weight
+                "heatmap-intensity": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  0,
+                  1,
+                  15,
+                  3,
+                ],
+                // Color ramp for heatmap - use vibrant colors for better visibility
+                "heatmap-color": [
+                  "interpolate",
+                  ["linear"],
+                  ["heatmap-density"],
+                  0,
+                  "rgba(33,102,172,0)",
+                  0.2,
+                  "rgb(103,169,207)",
+                  0.4,
+                  "rgb(209,229,240)",
+                  0.6,
+                  "rgb(253,219,199)",
+                  0.8,
+                  "rgb(239,138,98)",
+                  1,
+                  "rgb(178,24,43)",
+                ],
+                // Adjust the heatmap radius by zoom level
+                "heatmap-radius": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  0,
+                  2,
+                  15,
+                  50,
+                ],
+                // Transition from heatmap to circle layer by zoom level
+                "heatmap-opacity": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  7,
+                  1,
+                  18,
+                  0.5,
+                ],
+              },
+              layout: {
+                visibility: "none",
+              },
+            });
+          }
+
+          // Add a circle layer for point visualization when zoomed in
+          if (!map.getLayer(HEATMAP_POINT_LAYER_ID)) {
+            map.addLayer({
+              id: HEATMAP_POINT_LAYER_ID,
+              type: "circle",
+              source: HEATMAP_SOURCE_ID,
+              paint: {
+                // Size circle radius by zoom level and weight
+                "circle-radius": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  7,
+                  ["interpolate", ["linear"], ["get", "weight"], 1, 3, 6, 6],
+                  16,
+                  ["interpolate", ["linear"], ["get", "weight"], 1, 10, 6, 20],
+                ],
+                // Color circle by weight
+                "circle-color": [
+                  "interpolate",
+                  ["linear"],
+                  ["get", "weight"],
+                  1,
+                  "rgba(33,102,172,0.7)",
+                  3,
+                  "rgba(103,169,207,0.7)",
+                  5,
+                  "rgba(239,138,98,0.7)",
+                  6,
+                  "rgba(178,24,43,0.7)",
+                ],
+                "circle-stroke-color": "white",
+                "circle-stroke-width": 1,
+                // Transition from heatmap to circle layer by zoom level
+                "circle-opacity": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  7,
+                  0,
+                  18,
+                  0.8,
+                ],
+              },
+              layout: {
+                visibility: "none",
+              },
+            });
+          }
+
           map.addControl(
             new maplibregl.AttributionControl({
               customAttribution: MAP_ATTRIBUTION,
@@ -331,7 +509,7 @@ export const PassengerMap = ({ summary }: PassengerMapProps) => {
     markersRef.current.forEach((entry) => entry.marker.remove());
     markersRef.current = [];
 
-    // Passenger marker (pin)
+    // Passenger marker (pin) - always visible
     const passengerMarker = new maplibregl.Marker({
       element: createPassengerMarkerElement(),
       anchor: "bottom",
@@ -344,69 +522,91 @@ export const PassengerMap = ({ summary }: PassengerMapProps) => {
       marker: passengerMarker,
     });
 
-    // Driver markers (cars with ETA)
-    driverLocations.forEach((driver) => {
-      const element = createDriverMarkerElement(driver.etaMinutes);
-      element.title = `Driver • ETA ${driver.etaMinutes} min`;
+    // Driver markers (cars with ETA) - only show when heatmap is off
+    if (!showHeatmap) {
+      driverLocations.forEach((driver) => {
+        const element = createDriverMarkerElement(driver.etaMinutes);
+        element.title = `Driver • ETA ${driver.etaMinutes} min`;
 
-      const marker = new maplibregl.Marker({
-        element,
-        anchor: "center",
-      })
-        .setLngLat([driver.location.longitude, driver.location.latitude])
-        .setPopup(
-          new maplibregl.Popup({
-            closeButton: false,
-            closeOnClick: true,
-            offset: [0, -10],
-            maxWidth: "160px",
-            className: "driver-popup",
-          }).setHTML(
-            `<div style="
-              padding: 8px 12px;
-              background: white;
-              border-radius: 8px;
-              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-              font-family: system-ui, -apple-system, sans-serif;
-            ">
-              <div style="
-                display: flex;
-                align-items: center;
-                gap: 8px;
+        const marker = new maplibregl.Marker({
+          element,
+          anchor: "center",
+        })
+          .setLngLat([driver.location.longitude, driver.location.latitude])
+          .setPopup(
+            new maplibregl.Popup({
+              closeButton: false,
+              closeOnClick: true,
+              offset: [0, -10],
+              maxWidth: "160px",
+              className: "driver-popup",
+            }).setHTML(
+              `<div style="
+                padding: 8px 12px;
+                background: white;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                font-family: system-ui, -apple-system, sans-serif;
               ">
                 <div style="
-                  width: 24px;
-                  height: 24px;
-                  background: #0ea5e9;
-                  border-radius: 50%;
                   display: flex;
                   align-items: center;
-                  justify-content: center;
+                  gap: 8px;
                 ">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
-                    <path d="M5 11l1.5-4.5h11L19 11m-1.5 5a1.5 1.5 0 01-3 0m-9 0a1.5 1.5 0 013 0m12 0h1.5m-16.5 0h-1.5m17-5H5m2.5-6h9L18 8H6l1.5-3z"/>
-                  </svg>
-                </div>
-                <div>
                   <div style="
-                    font-size: 13px;
-                    font-weight: 600;
-                    color: #0f172a;
-                    margin-bottom: 2px;
-                  ">Available driver</div>
-                  <div style="
-                    font-size: 11px;
-                    color: #64748b;
-                  ">Estimated arrival: <strong style="color: #0ea5e9;">${driver.etaMinutes} min</strong></div>
+                    width: 24px;
+                    height: 24px;
+                    background: #0ea5e9;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                  ">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
+                      <path d="M5 11l1.5-4.5h11L19 11m-1.5 5a1.5 1.5 0 01-3 0m-9 0a1.5 1.5 0 013 0m12 0h1.5m-16.5 0h-1.5m17-5H5m2.5-6h9L18 8H6l1.5-3z"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div style="
+                      font-size: 13px;
+                      font-weight: 600;
+                      color: #0f172a;
+                      margin-bottom: 2px;
+                    ">Available driver</div>
+                    <div style="
+                      font-size: 11px;
+                      color: #64748b;
+                    ">Estimated arrival: <strong style="color: #0ea5e9;">${driver.etaMinutes} min</strong></div>
+                  </div>
                 </div>
-              </div>
-            </div>`,
-          ),
-        )
-        .addTo(map);
+              </div>`,
+            ),
+          )
+          .addTo(map);
 
-      markersRef.current.push({ id: driver.driverId, marker });
-    });
+        markersRef.current.push({ id: driver.driverId, marker });
+      });
+    }
+
+    // Update heatmap data with driver locations
+    const heatmapSource = map.getSource(HEATMAP_SOURCE_ID) as import("maplibre-gl").GeoJSONSource | undefined;
+    if (heatmapSource) {
+      const features = driverLocations.map((driver) => ({
+        type: "Feature" as const,
+        geometry: {
+          type: "Point" as const,
+          coordinates: [driver.location.longitude, driver.location.latitude],
+        },
+        properties: {
+          weight: Math.max(1, 7 - driver.etaMinutes), // Closer drivers have higher weight
+        },
+      }));
+
+      heatmapSource.setData({
+        type: "FeatureCollection",
+        features,
+      });
+    }
 
     if (passengerLocation && radiusKm > 0) {
       const source = map.getSource(RADIUS_SOURCE_ID) as import("maplibre-gl").GeoJSONSource | undefined;
@@ -438,7 +638,34 @@ export const PassengerMap = ({ summary }: PassengerMapProps) => {
         });
       }
     }
-  }, [driverLocations, passengerLocation, boundsCoordinates, mapError, radiusKm]);
+  }, [driverLocations, passengerLocation, boundsCoordinates, mapError, radiusKm, showHeatmap]);
+
+  // Toggle heatmap visibility
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !isReady) {
+      return;
+    }
+
+    const heatmapLayer = map.getLayer(HEATMAP_LAYER_ID);
+    const pointLayer = map.getLayer(HEATMAP_POINT_LAYER_ID);
+    
+    if (heatmapLayer) {
+      map.setLayoutProperty(
+        HEATMAP_LAYER_ID,
+        "visibility",
+        showHeatmap ? "visible" : "none"
+      );
+    }
+    
+    if (pointLayer) {
+      map.setLayoutProperty(
+        HEATMAP_POINT_LAYER_ID,
+        "visibility",
+        showHeatmap ? "visible" : "none"
+      );
+    }
+  }, [showHeatmap, isReady]);
 
   if (!passengerLocation) {
     return <StylisedFallbackMap />;
@@ -474,7 +701,143 @@ export const PassengerMap = ({ summary }: PassengerMapProps) => {
           </p>
           <p className="text-[11px] text-slate-400">Live updated</p>
         </div>
+        
+        {/* Location Status Indicator */}
+        <div className="rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2 text-xs text-slate-200 shadow-lg shadow-slate-900/50">
+          <div className="flex items-center gap-2">
+            <div className={`h-2 w-2 rounded-full ${isUsingRealLocation ? 'bg-green-500 animate-pulse' : 'bg-slate-400'}`} />
+            <p className="text-[10px] uppercase tracking-[0.3em] text-slate-400">
+              {isUsingRealLocation ? 'Live GPS' : 'Saved Loc'}
+            </p>
+          </div>
+          {isUsingRealLocation && currentLocation?.accuracy && (
+            <p className="text-[11px] text-slate-400 mt-1">
+              Accuracy: ±{Math.round(currentLocation.accuracy)}m
+            </p>
+          )}
+        </div>
       </div>
+
+      {/* Map Controls - Top Right */}
+      <div className="absolute right-4 top-4 flex flex-col gap-2">
+        {/* GPS Toggle Button */}
+        {onToggleRealLocation && (
+          <button
+            onClick={onToggleRealLocation}
+            className={`pointer-events-auto group flex items-center gap-2 rounded-2xl border px-4 py-2 text-xs shadow-lg shadow-slate-900/50 transition-all ${
+              useRealLocation
+                ? 'border-green-500/50 bg-green-950/70 text-green-200 hover:bg-green-900/80'
+                : 'border-white/10 bg-slate-950/70 text-slate-200 hover:bg-slate-900/80 hover:border-sky-500/50'
+            }`}
+            title={useRealLocation ? "Using live GPS location" : "Click to use your real-time location"}
+          >
+            <div className="relative h-5 w-5 flex items-center justify-center">
+              <svg 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                className="w-5 h-5"
+              >
+                <circle cx="12" cy="12" r="3" />
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="2" x2="12" y2="4" />
+                <line x1="12" y1="20" x2="12" y2="22" />
+                <line x1="2" y1="12" x2="4" y2="12" />
+                <line x1="20" y1="12" x2="22" y2="12" />
+              </svg>
+            </div>
+            <span className="text-[11px] font-medium whitespace-nowrap">
+              {useRealLocation ? "GPS Active" : "Use My Location"}
+            </span>
+          </button>
+        )}
+        
+        {/* Heatmap Toggle Button */}
+        <button
+          onClick={() => setShowHeatmap(!showHeatmap)}
+          className="pointer-events-auto group flex items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-2 text-xs text-slate-200 shadow-lg shadow-slate-900/50 transition-all hover:bg-slate-900/80 hover:border-sky-500/50"
+          title={showHeatmap ? "Show individual drivers" : "Show driver density heat map"}
+        >
+          <div className="relative h-5 w-5 flex items-center justify-center">
+            {showHeatmap ? (
+              // Icon for markers view
+              <svg 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                className="w-5 h-5"
+              >
+                <path d="M5 11l1.5-4.5h11L19 11m-1.5 5a1.5 1.5 0 01-3 0m-9 0a1.5 1.5 0 013 0m12 0h1.5m-16.5 0h-1.5m17-5H5m2.5-6h9L18 8H6l1.5-3z"/>
+              </svg>
+            ) : (
+              // Icon for heatmap view
+              <svg 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                className="w-5 h-5"
+              >
+                <circle cx="12" cy="12" r="3" fill="currentColor" opacity="0.8" />
+                <circle cx="12" cy="12" r="6" opacity="0.4" />
+                <circle cx="12" cy="12" r="9" opacity="0.2" />
+              </svg>
+            )}
+          </div>
+          <span className="text-[11px] font-medium whitespace-nowrap">
+            {showHeatmap ? "Show Markers" : "Show Heat Map"}
+          </span>
+        </button>
+      </div>
+
+      {/* Heat map legend - only show when heatmap is active */}
+      {showHeatmap && (
+        <div className="pointer-events-none absolute bottom-4 right-4 rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2 text-xs text-slate-200 shadow-lg shadow-slate-900/50">
+          <p className="text-[10px] uppercase tracking-[0.3em] text-slate-400 mb-2">Driver Density</p>
+          <div className="flex items-center gap-2">
+            <div className="flex h-3 w-24 rounded overflow-hidden">
+              <div className="flex-1 bg-[rgb(103,169,207)]"></div>
+              <div className="flex-1 bg-[rgb(209,229,240)]"></div>
+              <div className="flex-1 bg-[rgb(253,219,199)]"></div>
+              <div className="flex-1 bg-[rgb(239,138,98)]"></div>
+              <div className="flex-1 bg-[rgb(178,24,43)]"></div>
+            </div>
+          </div>
+          <div className="flex justify-between mt-1">
+            <span className="text-[9px] text-slate-400">Low</span>
+            <span className="text-[9px] text-slate-400">High</span>
+          </div>
+        </div>
+      )}
+
+      {/* Coordinates Display with Source Info */}
+      {passengerLocation?.latitude != null && passengerLocation?.longitude != null && (
+        <div className={`pointer-events-none absolute bottom-4 left-4 rounded-lg border px-3 py-2 text-[10px] shadow-lg ${
+          isUsingRealLocation 
+            ? 'border-green-500/30 bg-green-950/90 text-green-200'
+            : 'border-yellow-500/30 bg-slate-950/90 text-yellow-200'
+        }`}>
+          <p className="text-[9px] text-slate-400 mb-1">
+            {isUsingRealLocation ? '📍 Live GPS Location' : '📌 Saved Location'}
+          </p>
+          <p className="font-mono">
+            {passengerLocation.latitude.toFixed(6)}, {passengerLocation.longitude.toFixed(6)}
+          </p>
+          <p className="text-[9px] text-slate-400 mt-1">
+            Check console for verification link
+          </p>
+        </div>
+      )}
+      
+      {/* Location Error Display */}
+      {locationError && !isUsingRealLocation && (
+        <div className="pointer-events-none absolute bottom-20 left-4 right-4 max-w-sm rounded-lg border border-red-500/30 bg-red-950/90 px-3 py-2 text-xs text-red-200 shadow-lg">
+          <p className="font-semibold mb-1">⚠️ Location Access Needed</p>
+          <p className="text-[10px]">{locationError}</p>
+        </div>
+      )}
     </div>
   );
 };

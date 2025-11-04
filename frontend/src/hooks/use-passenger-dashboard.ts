@@ -7,6 +7,7 @@ import {
 } from "@/lib/passenger-service";
 import { useAuth } from "@/hooks/use-auth";
 import { realtimeClient, type RealtimeEvent } from "@/lib/realtime";
+import { useGeolocation } from "@/hooks/use-geolocation";
 
 const MAX_EVENTS = 10;
 
@@ -18,7 +19,16 @@ export const usePassengerDashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState<FetchDashboardSummaryParams | undefined>();
   const [events, setEvents] = useState<RealtimeEvent[]>([]);
+  const [useRealLocation, setUseRealLocation] = useState(true);
   const refreshTimeoutRef = useRef<number | null>(null);
+  
+  // Get user's real-time location
+  const geolocation = useGeolocation({
+    enableHighAccuracy: true,
+    watch: true, // Continuously update location
+    timeout: 15000,
+    maximumAge: 30000, // Use cached location if less than 30 seconds old
+  });
 
   const canLoad = useMemo(() => Boolean(token), [token]);
 
@@ -28,7 +38,17 @@ export const usePassengerDashboard = () => {
         return;
       }
 
-      const params = overrideParams ?? query;
+      let params = overrideParams ?? query;
+      
+      // Use real-time location if available and enabled
+      if (useRealLocation && geolocation.position && !overrideParams) {
+        params = {
+          ...params,
+          lat: geolocation.position.latitude,
+          lng: geolocation.position.longitude,
+        };
+      }
+      
       if (overrideParams) {
         setQuery(overrideParams);
       }
@@ -46,7 +66,7 @@ export const usePassengerDashboard = () => {
         setIsLoading(false);
       }
     },
-    [token, query],
+    [token, query, useRealLocation, geolocation.position],
   );
 
   useEffect(() => {
@@ -121,6 +141,14 @@ export const usePassengerDashboard = () => {
     };
   }, [summary, scheduleRealtimeRefresh]);
 
+  // Refresh dashboard when location updates
+  useEffect(() => {
+    if (canLoad && geolocation.position && useRealLocation) {
+      void loadDashboard();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canLoad, geolocation.position?.latitude, geolocation.position?.longitude, useRealLocation]);
+
   return {
     summary,
     isLoading: isLoading && !summary,
@@ -133,5 +161,13 @@ export const usePassengerDashboard = () => {
     },
     currentQuery: query,
     events,
+    // Location-related
+    geolocation,
+    useRealLocation,
+    setUseRealLocation,
+    currentLocation: geolocation.position ? {
+      latitude: geolocation.position.latitude,
+      longitude: geolocation.position.longitude,
+    } : null,
   };
 };
