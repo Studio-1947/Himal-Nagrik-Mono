@@ -108,6 +108,16 @@ const DriverProfilePage = () => {
     acceptOffer,
     rejectOffer,
   } = useDriverOffers();
+  
+  // Debug: Log when currentOffer changes
+  useEffect(() => {
+    console.log('[Driver Profile] currentOffer changed:', currentOffer);
+    if (currentOffer) {
+      console.log('[Driver Profile] ✅ HAS OFFER - popup should show!');
+    } else {
+      console.log('[Driver Profile] ❌ NO OFFER - popup hidden');
+    }
+  }, [currentOffer]);
 
   // Handle offer acceptance
   const handleAcceptOffer = async (offerId: string) => {

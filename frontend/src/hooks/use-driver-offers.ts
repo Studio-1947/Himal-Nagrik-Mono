@@ -8,6 +8,11 @@ export const useDriverOffers = () => {
   const token = session?.token;
   const driverId = session?.userId;
   
+  console.log('[useDriverOffers] 🏁 Hook initialized!');
+  console.log('[useDriverOffers] Session:', session ? 'EXISTS' : 'NULL');
+  console.log('[useDriverOffers] Token:', token ? token.substring(0, 20) + '...' : 'NULL');
+  console.log('[useDriverOffers] Driver ID:', driverId || 'NULL');
+  
   const [currentOffer, setCurrentOffer] = useState<DispatchOffer | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -16,27 +21,38 @@ export const useDriverOffers = () => {
 
   // Load initial offers
   const loadOffers = useCallback(async () => {
-    if (!token) return;
+    if (!token) {
+      console.log('[useDriverOffers] No token, skipping load');
+      return;
+    }
     
     setIsLoading(true);
     setError(null);
     
     try {
+      console.log('[useDriverOffers] Loading offers with token:', token.substring(0, 20) + '...');
       const offers = await dispatchService.listOffers(token);
       console.log('[useDriverOffers] Loaded offers:', offers);
+      console.log('[useDriverOffers] Offers count:', offers.length);
+      console.log('[useDriverOffers] Offers statuses:', offers.map(o => o.status));
+      
       // Get the most recent pending offer
       const pendingOffer = offers.find(o => o.status === 'pending');
       if (pendingOffer) {
-        console.log('[useDriverOffers] Setting current offer:', pendingOffer);
+        console.log('[useDriverOffers] ✅ Setting current offer:', pendingOffer);
+        console.log('[useDriverOffers] Offer details - ID:', pendingOffer.id, 'Booking:', pendingOffer.bookingId);
+        console.log('[useDriverOffers] Offer pickup:', pendingOffer.pickup);
+        console.log('[useDriverOffers] Offer dropoff:', pendingOffer.dropoff);
+        console.log('[useDriverOffers] Offer expiresAt:', pendingOffer.expiresAt);
         setCurrentOffer(pendingOffer);
         // Play notification sound for existing offers
         playNotificationSound();
       } else {
-        console.log('[useDriverOffers] No pending offers found');
+        console.log('[useDriverOffers] ❌ No pending offers found. All offers:', offers);
         setCurrentOffer(null);
       }
     } catch (err) {
-      console.error('Failed to load offers:', err);
+      console.error('[useDriverOffers] ❌ Failed to load offers:', err);
       setError(err instanceof Error ? err.message : 'Failed to load offers');
     } finally {
       setIsLoading(false);
@@ -91,33 +107,40 @@ export const useDriverOffers = () => {
 
   // Listen for real-time offer events
   useEffect(() => {
-    if (!driverId) return;
+    if (!driverId) {
+      console.log('[useDriverOffers] No driverId, skipping setup');
+      return;
+    }
+
+    console.log('[useDriverOffers] 🔧 Setting up real-time subscription for driver:', driverId);
 
     const handleRealtimeEvent = (event: RealtimeEvent) => {
-      console.log('[useDriverOffers] Received event:', event.type, event.data);
+      console.log('[useDriverOffers] 📡 Received event:', event.type, event.data);
 
       if (event.type === 'dispatch.offer.created') {
         const offer = event.data?.offer as DispatchOffer;
         if (offer) {
-          console.log('[useDriverOffers] New offer received:', offer);
+          console.log('[useDriverOffers] ✅ New offer received:', offer);
+          console.log('[useDriverOffers] Offer validation - has pickup?', !!offer.pickup, 'has dropoff?', !!offer.dropoff, 'has expiresAt?', !!offer.expiresAt);
           setCurrentOffer(offer);
           // Play notification sound
           playNotificationSound();
         } else {
-          console.warn('[useDriverOffers] Offer data missing in event:', event.data);
+          console.warn('[useDriverOffers] ⚠️ Offer data missing in event:', event.data);
         }
       } else if (event.type === 'dispatch.offer.expired') {
         const expiredOfferId = event.data?.offerId;
-        console.log('[useDriverOffers] Offer expired:', expiredOfferId);
+        console.log('[useDriverOffers] ⏱️ Offer expired:', expiredOfferId);
         setCurrentOffer(prev => {
           if (prev?.id === expiredOfferId) {
+            console.log('[useDriverOffers] Clearing expired offer');
             return null;
           }
           return prev;
         });
       } else if (event.type === 'dispatch.offer.accepted') {
         // Offer was accepted (confirmation)
-        console.log('[useDriverOffers] Offer accepted');
+        console.log('[useDriverOffers] ✅ Offer accepted confirmation');
         setCurrentOffer(null);
       }
     };
@@ -126,11 +149,14 @@ export const useDriverOffers = () => {
       `driver:${driverId}`,
       handleRealtimeEvent
     );
+    console.log('[useDriverOffers] 📡 Subscribed to channel: driver:' + driverId);
 
     // Load initial offers
+    console.log('[useDriverOffers] 🔄 Loading initial offers...');
     void loadOffers();
 
     return () => {
+      console.log('[useDriverOffers] 🔌 Unsubscribing from driver channel');
       unsubscribe();
     };
   }, [driverId, loadOffers]);

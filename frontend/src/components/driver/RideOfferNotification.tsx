@@ -24,7 +24,18 @@ export const RideOfferNotification = ({
 
   // Debug log when offer changes
   useEffect(() => {
-    console.log('[RideOfferNotification] Offer prop changed:', offer);
+    console.log('[RideOfferNotification] 🎯 Offer prop changed:', offer);
+    if (offer) {
+      console.log('[RideOfferNotification] ✅ OFFER EXISTS - should render popup!');
+      console.log('[RideOfferNotification] Offer ID:', offer.id);
+      console.log('[RideOfferNotification] Offer status:', offer.status);
+      console.log('[RideOfferNotification] Has pickup?', !!offer.pickup);
+      console.log('[RideOfferNotification] Has dropoff?', !!offer.dropoff);
+      console.log('[RideOfferNotification] Has expiresAt?', !!offer.expiresAt);
+      console.log('[RideOfferNotification] Passenger:', offer.passenger);
+    } else {
+      console.log('[RideOfferNotification] ❌ NO OFFER - popup hidden');
+    }
   }, [offer]);
 
   // Calculate time remaining
@@ -52,7 +63,12 @@ export const RideOfferNotification = ({
     return () => clearInterval(interval);
   }, [offer]);
 
-  if (!offer) return null;
+  if (!offer) {
+    console.log('[RideOfferNotification] 🚫 Render blocked - no offer');
+    return null;
+  }
+  
+  console.log('[RideOfferNotification] ✅ RENDERING POPUP!');
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
