@@ -173,11 +173,34 @@ export const useDriverOffers = () => {
   };
 };
 
+type AudioContextWindow = Window & {
+  webkitAudioContext?: typeof AudioContext;
+};
+
+const getAudioContextConstructor = (): typeof AudioContext | null => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  if (typeof window.AudioContext !== "undefined") {
+    return window.AudioContext;
+  }
+
+  const extendedWindow = window as AudioContextWindow;
+  return extendedWindow.webkitAudioContext ?? null;
+};
+
 // Helper function to play notification sound
 const playNotificationSound = () => {
   try {
+    const AudioContextConstructor = getAudioContextConstructor();
+    if (!AudioContextConstructor) {
+      console.warn("Web Audio API not supported in this environment");
+      return;
+    }
+
     // Create audio context and play a simple beep
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const audioContext = new AudioContextConstructor();
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
     
@@ -196,5 +219,4 @@ const playNotificationSound = () => {
     console.warn('Failed to play notification sound:', error);
   }
 };
-
 

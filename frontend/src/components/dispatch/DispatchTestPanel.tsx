@@ -357,72 +357,115 @@ export const DispatchTestPanel = ({
                 No active offers. Keep the heartbeat running to receive rides.
               </div>
             ) : (
-              offers.map((offer) => (
-                <div
-                  key={offer.id}
-                  className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-slate-200"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-semibold text-white">
-                        Booking {offer.bookingId.slice(0, 8)}
-                      </p>
-                      <p className="text-xs text-slate-400">
-                        Received {new Date(offer.createdAt).toLocaleTimeString()}
-                      </p>
+              offers.map((offer) => {
+                const pickupDescription =
+                  offer.pickup.description ??
+                  `${offer.pickup.latitude.toFixed(4)}, ${offer.pickup.longitude.toFixed(4)}`;
+                const dropoffDescription =
+                  offer.dropoff.description ??
+                  `${offer.dropoff.latitude.toFixed(4)}, ${offer.dropoff.longitude.toFixed(4)}`;
+                const passengerName =
+                  offer.passenger?.name ?? `Passenger ${offer.passengerId.slice(0, 6)}`;
+
+                return (
+                  <div
+                    key={offer.id}
+                    className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-slate-200 space-y-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-white flex items-center gap-2">
+                          Booking {offer.bookingId.slice(0, 8)}
+                          {offer.fareQuote ? (
+                            <span className="text-xs font-normal text-emerald-300">
+                              ₹{offer.fareQuote.amount} est.
+                            </span>
+                          ) : null}
+                        </p>
+                        <p className="text-xs text-slate-400">
+                          Received {new Date(offer.createdAt).toLocaleTimeString()}
+                        </p>
+                      </div>
+                      <Badge className={getOfferStatusStyle(offer.status)}>
+                        {offer.status}
+                      </Badge>
                     </div>
-                    <Badge className={getOfferStatusStyle(offer.status)}>
-                      {offer.status}
-                    </Badge>
+
+                    <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-1">
+                      <p className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
+                        Passenger
+                      </p>
+                      <p className="font-medium text-white">{passengerName}</p>
+                      {offer.passenger?.phone ? (
+                        <p className="text-xs text-slate-400">Phone: {offer.passenger.phone}</p>
+                      ) : null}
+                    </div>
+
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
+                        <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-300">
+                          Pickup
+                        </p>
+                        <p className="text-sm text-white">{pickupDescription}</p>
+                      </div>
+                      <div className="rounded-lg border border-sky-500/20 bg-sky-500/5 p-3">
+                        <p className="text-[11px] uppercase tracking-[0.2em] text-sky-300">
+                          Dropoff
+                        </p>
+                        <p className="text-sm text-white">{dropoffDescription}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="bg-emerald-500/20 text-emerald-100 hover:bg-emerald-500/30"
+                        onClick={() => handleAcceptOffer(offer.id)}
+                        disabled={
+                          offer.status !== "pending" ||
+                          acceptingOfferId === offer.id ||
+                          rejectingOfferId === offer.id
+                        }
+                      >
+                        {acceptingOfferId === offer.id ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Accepting...
+                          </>
+                        ) : (
+                          "Accept"
+                        )}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="border-red-400/40 text-red-200 hover:bg-red-500/15"
+                        onClick={() => handleRejectOffer(offer.id)}
+                        disabled={
+                          offer.status !== "pending" ||
+                          rejectingOfferId === offer.id ||
+                          acceptingOfferId === offer.id
+                        }
+                      >
+                        {rejectingOfferId === offer.id ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Rejecting...
+                          </>
+                        ) : (
+                          "Reject"
+                        )}
+                      </Button>
+                    </div>
+
+                    <p className="text-xs text-slate-400">
+                      Passenger ID {offer.passengerId.slice(0, 8)}
+                    </p>
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="bg-emerald-500/20 text-emerald-100 hover:bg-emerald-500/30"
-                      onClick={() => handleAcceptOffer(offer.id)}
-                      disabled={
-                        offer.status !== "pending" ||
-                        acceptingOfferId === offer.id ||
-                        rejectingOfferId === offer.id
-                      }
-                    >
-                      {acceptingOfferId === offer.id ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Accepting...
-                        </>
-                      ) : (
-                        "Accept"
-                      )}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="border-red-400/40 text-red-200 hover:bg-red-500/15"
-                      onClick={() => handleRejectOffer(offer.id)}
-                      disabled={
-                        offer.status !== "pending" ||
-                        rejectingOfferId === offer.id ||
-                        acceptingOfferId === offer.id
-                      }
-                    >
-                      {rejectingOfferId === offer.id ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Rejecting...
-                        </>
-                      ) : (
-                        "Reject"
-                      )}
-                    </Button>
-                  </div>
-                  <p className="mt-2 text-xs text-slate-400">
-                    Passenger ID {offer.passengerId.slice(0, 8)}
-                  </p>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>

@@ -4,6 +4,7 @@ import { getRedisClient } from '../../infra/cache';
 import { getDriverStateTtlSeconds } from '../../infra/cache/redis';
 import { publishRealtimeEvent } from '../../infra/realtime';
 import { bookingRepository } from '../booking/booking.repository';
+import { authRepository } from '../auth/auth.repository';
 import {
   enqueueBookingRequest,
   removeBookingRequest,
@@ -705,6 +706,24 @@ const enrichOfferWithBookingData = async (
       : booking.fareQuote
     : undefined;
 
+  const passengerRecord = await authRepository.findById(booking.passengerId);
+  const passengerDetails = passengerRecord
+    ? {
+        name: passengerRecord.name,
+        phone: passengerRecord.phone ?? undefined,
+        rating:
+          typeof passengerRecord.stats === 'object' && passengerRecord.stats !== null
+            ? Number(
+                (passengerRecord.stats as { rating?: number }).rating ?? undefined,
+              ) || 5
+            : 5,
+      }
+    : {
+        name: 'Passenger',
+        phone: undefined,
+        rating: 5,
+      };
+
   return {
     ...mapInternalOfferToResponse(offer),
     driverId: offer.driverId,
@@ -718,11 +737,7 @@ const enrichOfferWithBookingData = async (
           breakdown: fareQuote.breakdown,
         }
       : undefined,
-    passenger: {
-      name: 'Passenger',
-      phone: undefined,
-      rating: 5.0,
-    },
+    passenger: passengerDetails,
   };
 };
 

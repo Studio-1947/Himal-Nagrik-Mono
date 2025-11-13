@@ -231,8 +231,8 @@ export const RequestRideButton = ({
     setShowDropoffResults(false);
   };
 
-  // Use saved location
-  const useSavedLocation = (location: PassengerSavedLocation, type: 'pickup' | 'dropoff') => {
+  // Apply a saved location to the selected field
+  const applySavedLocation = (location: PassengerSavedLocation, type: 'pickup' | 'dropoff') => {
     const loc = {
       address: location.label || "Saved Location",
       latitude: location.location.latitude,
@@ -391,7 +391,7 @@ export const RequestRideButton = ({
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => useSavedLocation(loc, 'pickup')}
+                      onClick={() => applySavedLocation(loc, 'pickup')}
                       className="text-xs"
                     >
                       <MapPin className="mr-1 h-3 w-3" />
@@ -494,7 +494,7 @@ export const RequestRideButton = ({
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => useSavedLocation(loc, 'dropoff')}
+                      onClick={() => applySavedLocation(loc, 'dropoff')}
                       className="text-xs"
                     >
                       <MapPin className="mr-1 h-3 w-3" />

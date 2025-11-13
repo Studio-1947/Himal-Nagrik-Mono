@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { tripService, type TripHistoryItem } from "@/lib/trip-service";
@@ -14,16 +14,7 @@ const TripHistoryPage = () => {
   const [trips, setTrips] = useState<TripHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    if (!isAuthenticated || !session?.token) {
-      navigate("/login");
-      return;
-    }
-
-    loadTripHistory();
-  }, [isAuthenticated, session, navigate]);
-
-  const loadTripHistory = async () => {
+  const loadTripHistory = useCallback(async () => {
     if (!session?.token) return;
 
     try {
@@ -40,7 +31,16 @@ const TripHistoryPage = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [session?.token]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !session?.token) {
+      navigate("/login");
+      return;
+    }
+
+    void loadTripHistory();
+  }, [isAuthenticated, session, navigate, loadTripHistory]);
 
   const getStatusColor = (status: string) => {
     switch (status) {

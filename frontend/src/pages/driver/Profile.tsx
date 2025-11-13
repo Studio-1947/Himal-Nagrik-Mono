@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   CalendarClock,
@@ -37,6 +37,8 @@ import { driverService } from "@/lib/driver-service";
 import { useDriverOffers } from "@/hooks/use-driver-offers";
 import { RideOfferNotification } from "@/components/driver/RideOfferNotification";
 import { ActiveRideDisplay } from "@/components/driver/ActiveRideDisplay";
+import { bookingService, type BookingResponse } from "@/lib/booking-service";
+import { tripService } from "@/lib/trip-service";
 
 const optionalShortString = z.string().max(160).optional().or(z.literal(""));
 const optionalMediumString = z.string().max(120).optional().or(z.literal(""));
@@ -98,7 +100,9 @@ const DriverProfilePage = () => {
   const [documentType, setDocumentType] = useState("");
   const [documentMetadata, setDocumentMetadata] = useState("");
   const [isSubmittingDocument, setIsSubmittingDocument] = useState(false);
-  const [activeBooking, setActiveBooking] = useState(null);
+  const [activeBooking, setActiveBooking] = useState<BookingResponse | null>(null);
+  const [isAdvancingTrip, setIsAdvancingTrip] = useState(false);
+  const [isCompletingTrip, setIsCompletingTrip] = useState(false);
   
   // Driver offers hook - handles real-time ride requests
   const {
@@ -119,15 +123,38 @@ const DriverProfilePage = () => {
     }
   }, [currentOffer]);
 
+  const loadActiveBooking = useCallback(async () => {
+    if (!session?.token) {
+      setActiveBooking(null);
+      return;
+    }
+
+    try {
+      const currentTrip = await tripService.getCurrentTrip(session.token);
+      if (currentTrip) {
+        const booking = await bookingService.get(session.token, currentTrip.rideId);
+        setActiveBooking(booking);
+      } else {
+        setActiveBooking(null);
+      }
+    } catch (error) {
+      console.error("[Driver Profile] Failed to load active trip", error);
+    }
+  }, [session?.token]);
+
+  useEffect(() => {
+    void loadActiveBooking();
+  }, [loadActiveBooking]);
+
   // Handle offer acceptance
   const handleAcceptOffer = async (offerId: string) => {
     const booking = await acceptOffer(offerId);
     if (booking) {
-      setActiveBooking(booking);
       toast({
         title: "Ride Accepted!",
         description: "Passenger details are now available. Navigate to pickup location.",
       });
+      setActiveBooking(booking);
     }
   };
 
@@ -139,6 +166,79 @@ const DriverProfilePage = () => {
         title: "Ride Rejected",
         description: "Looking for more ride requests...",
       });
+    }
+  };
+
+  const handleAdvanceTripStatus = async () => {
+    if (!session?.token || !activeBooking) {
+      return;
+    }
+
+    try {
+      setIsAdvancingTrip(true);
+      const trip = await tripService.startTrip(session.token, {
+        rideId: activeBooking.id,
+      });
+
+      setActiveBooking((booking) =>
+        booking
+          ? {
+              ...booking,
+              status: trip.status as BookingResponse["status"],
+              lastUpdatedAt: new Date().toISOString(),
+            }
+          : booking,
+      );
+
+      toast({
+        title:
+          trip.status === "passenger_onboard"
+            ? "Passenger Onboard"
+            : "Heading to pickup",
+        description:
+          trip.status === "passenger_onboard"
+            ? "Drive safely to the destination."
+            : "Navigation updated for the pickup point.",
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to update trip status";
+      toast({
+        title: "Trip update failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsAdvancingTrip(false);
+    }
+  };
+
+  const handleCompleteTrip = async () => {
+    if (!session?.token || !activeBooking) {
+      return;
+    }
+
+    try {
+      setIsCompletingTrip(true);
+      const trip = await tripService.completeTrip(session.token, activeBooking.id, {});
+      toast({
+        title: "Trip Completed",
+        description: trip.actualFare
+          ? `Collected fare: Rs ${trip.actualFare}`
+          : "Great job! Ready for the next ride.",
+      });
+      setActiveBooking(null);
+      await loadActiveBooking();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to complete trip";
+      toast({
+        title: "Trip completion failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsCompletingTrip(false);
     }
   };
 

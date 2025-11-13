@@ -1,4 +1,4 @@
-import { apiClient } from './api-client';
+import { apiClient, ApiError } from './api-client';
 
 export interface LocationPoint {
   latitude: number;
@@ -96,8 +96,8 @@ export const tripService = {
           Authorization: `Bearer ${token}`,
         },
       });
-    } catch (error: any) {
-      if (error.status === 404) {
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
         return null;
       }
       throw error;
