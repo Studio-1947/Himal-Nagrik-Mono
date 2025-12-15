@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { bookingService, type CreateBookingPayload } from "@/lib/booking-service";
 import { useAuth } from "@/hooks/use-auth";
-import type { PassengerSavedLocation } from "@/lib/passenger-service";
+import type { PassengerSavedLocation } from "@/lib/auth-service";
 import { MapPin, Loader2, Search, Navigation } from "lucide-react";
 import { useGeolocation } from "@/hooks/use-geolocation";
 
@@ -20,6 +20,11 @@ type RequestRideButtonProps = {
   savedLocations: PassengerSavedLocation[];
   defaultPickup?: PassengerSavedLocation | null;
   onSuccess?: () => void;
+  disabled?: boolean;
+  disabledReason?: string;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  initialPickup?: { latitude: number; longitude: number; address?: string } | null;
 };
 
 type LocationSearchResult = {
@@ -44,7 +49,7 @@ type FormState = {
 // Geocoding service using OpenStreetMap Nominatim
 const searchAddress = async (query: string): Promise<LocationSearchResult[]> => {
   if (!query || query.length < 3) return [];
-  
+
   try {
     const response = await fetch(
       `https://nominatim.openstreetmap.org/search?` +
@@ -59,7 +64,7 @@ const searchAddress = async (query: string): Promise<LocationSearchResult[]> => 
         },
       }
     );
-    
+
     if (!response.ok) throw new Error("Search failed");
     return await response.json();
   } catch (error) {
@@ -82,7 +87,7 @@ const reverseGeocode = async (lat: number, lon: number): Promise<string> => {
         },
       }
     );
-    
+
     if (!response.ok) throw new Error("Reverse geocoding failed");
     const data = await response.json();
     return data.display_name || `${lat}, ${lon}`;
@@ -96,24 +101,64 @@ export const RequestRideButton = ({
   savedLocations,
   defaultPickup,
   onSuccess,
+  disabled = false,
+  disabledReason,
+  isOpen: externalIsOpen,
+  onOpenChange: externalOnOpenChange,
+  initialPickup,
 }: RequestRideButtonProps) => {
   const { session } = useAuth();
   const token = session?.token;
-  const [isOpen, setIsOpen] = useState(false);
+
+  // Internal state for when not controlled
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const isOpen = externalIsOpen ?? internalIsOpen;
+  const setIsOpen = externalOnOpenChange ?? setInternalIsOpen;
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const defaultPickupLocation = defaultPickup ?? savedLocations[0];
 
-  const [formState, setFormState] = useState<FormState>(() => ({
-    pickup: defaultPickupLocation ? {
-      address: defaultPickupLocation.label || "My Location",
-      latitude: defaultPickupLocation.location.latitude,
-      longitude: defaultPickupLocation.location.longitude,
-    } : null,
-    dropoff: null,
-    notes: "",
-  }));
+  const [formState, setFormState] = useState<FormState>(() => {
+    // Priority: initialPickup prop > defaultPickup > savedLocations[0] > null
+    if (initialPickup) {
+      return {
+        pickup: {
+          address: initialPickup.address || "Selected on Map",
+          latitude: initialPickup.latitude,
+          longitude: initialPickup.longitude,
+        },
+        dropoff: null,
+        notes: "",
+      };
+    }
+
+    return {
+      pickup: defaultPickupLocation ? {
+        address: defaultPickupLocation.label || "My Location",
+        latitude: defaultPickupLocation.location.latitude,
+        longitude: defaultPickupLocation.location.longitude,
+      } : null,
+      dropoff: null,
+      notes: "",
+    };
+  });
+
+  // Update form state when initialPickup changes and dialog opens
+  useEffect(() => {
+    if (isOpen && initialPickup) {
+      setFormState(prev => ({
+        ...prev,
+        pickup: {
+          address: initialPickup.address || "Selected on Map",
+          latitude: initialPickup.latitude,
+          longitude: initialPickup.longitude,
+        },
+      }));
+      setPickupSearch(initialPickup.address || "Selected on Map");
+    }
+  }, [isOpen, initialPickup]);
 
   // Address search states
   const [pickupSearch, setPickupSearch] = useState("");
@@ -127,7 +172,7 @@ export const RequestRideButton = ({
   const [searchError, setSearchError] = useState<string | null>(null);
   const pickupSearchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const dropoffSearchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   // Get user's current location
   const geolocation = useGeolocation({ enableHighAccuracy: true });
 
@@ -135,7 +180,7 @@ export const RequestRideButton = ({
   const handlePickupSearch = useCallback(async (query: string) => {
     setPickupSearch(query);
     setSearchError(null);
-    
+
     if (query.length < 3) {
       setPickupResults([]);
       setShowPickupResults(false);
@@ -149,7 +194,7 @@ export const RequestRideButton = ({
 
     setIsSearchingPickup(true);
     setShowPickupResults(true);
-    
+
     // Debounce search by 500ms
     pickupSearchTimeoutRef.current = setTimeout(async () => {
       try {
@@ -171,7 +216,7 @@ export const RequestRideButton = ({
   const handleDropoffSearch = useCallback(async (query: string) => {
     setDropoffSearch(query);
     setSearchError(null);
-    
+
     if (query.length < 3) {
       setDropoffResults([]);
       setShowDropoffResults(false);
@@ -185,7 +230,7 @@ export const RequestRideButton = ({
 
     setIsSearchingDropoff(true);
     setShowDropoffResults(true);
-    
+
     // Debounce search by 500ms
     dropoffSearchTimeoutRef.current = setTimeout(async () => {
       try {
@@ -238,7 +283,7 @@ export const RequestRideButton = ({
       latitude: location.location.latitude,
       longitude: location.location.longitude,
     };
-    
+
     if (type === 'pickup') {
       setFormState((prev) => ({ ...prev, pickup: loc }));
       setPickupSearch(loc.address);
@@ -263,13 +308,13 @@ export const RequestRideButton = ({
         geolocation.position.latitude,
         geolocation.position.longitude
       );
-      
+
       const loc = {
         address: address,
         latitude: geolocation.position.latitude,
         longitude: geolocation.position.longitude,
       };
-      
+
       setFormState((prev) => ({ ...prev, pickup: loc }));
       setPickupSearch(address);
       setShowPickupResults(false);
@@ -349,11 +394,23 @@ export const RequestRideButton = ({
       <Button
         variant="default"
         className="rounded-full bg-gradient-to-r from-emerald-500 via-sky-500 to-emerald-400 px-8 py-3 text-base font-semibold text-white shadow-[0_18px_55px_rgba(16,185,129,0.25)] hover:opacity-90 transition-all"
-        onClick={() => setIsOpen(true)}
+        onClick={() => {
+          if (disabled) {
+            return;
+          }
+          setIsOpen(true);
+        }}
+        disabled={disabled}
       >
         <MapPin className="mr-2 h-5 w-5" />
         Request a ride
       </Button>
+
+      {disabled && disabledReason && (
+        <p className="mt-2 text-xs text-slate-400 text-center max-w-md mx-auto">
+          {disabledReason}
+        </p>
+      )}
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -367,7 +424,7 @@ export const RequestRideButton = ({
               <Label htmlFor="pickup-search" className="text-base font-semibold">
                 Pickup Location
               </Label>
-              
+
               {/* Current Location Button */}
               <Button
                 type="button"
@@ -380,7 +437,7 @@ export const RequestRideButton = ({
                 <Navigation className="mr-2 h-4 w-4" />
                 Use My Current Location
               </Button>
-              
+
               {/* Saved Locations Quick Select */}
               {savedLocations.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-2">
@@ -400,7 +457,7 @@ export const RequestRideButton = ({
                   ))}
                 </div>
               )}
-              
+
               <div className="space-y-2">
                 <div className="relative">
                   <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
@@ -483,7 +540,7 @@ export const RequestRideButton = ({
               <Label htmlFor="dropoff-search" className="text-base font-semibold">
                 Dropoff Location <span className="text-red-500">*</span>
               </Label>
-              
+
               {/* Saved Locations Quick Select */}
               {savedLocations.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-2">
@@ -503,7 +560,7 @@ export const RequestRideButton = ({
                   ))}
                 </div>
               )}
-              
+
               <div className="space-y-2">
                 <div className="relative">
                   <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />

@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   CalendarDays,
@@ -32,6 +32,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { usePassengerDashboard } from "@/hooks/use-passenger-dashboard";
 import { PassengerMap } from "@/features/passenger/dashboard/PassengerMap";
 import { RequestRideButton } from "@/features/passenger/dashboard/RequestRideButton";
+import { ActiveTripCard } from "@/features/passenger/dashboard/ActiveTripCard";
+import { PostTripActionsCard } from "@/features/passenger/dashboard/PostTripActionsCard";
 
 const passengerSettingsSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters" }),
@@ -64,7 +66,18 @@ const PassengerProfilePage = () => {
     useRealLocation,
     setUseRealLocation,
     currentLocation,
+    activeTripLocation,
+    completedRidePrompt,
+    dismissCompletedRidePrompt,
   } = usePassengerDashboard();
+
+  const [isRideRequestOpen, setIsRideRequestOpen] = useState(false);
+  const [mapSelectedLocation, setMapSelectedLocation] = useState<{
+    latitude: number;
+    longitude: number;
+    address?: string;
+  } | null>(null);
+
   const navigate = useNavigate();
   const formValues = useMemo<PassengerSettingsValues>(() => {
     if (profile?.role === "passenger") {
@@ -141,13 +154,13 @@ const PassengerProfilePage = () => {
         },
         emergencyContact:
           values.emergencyContactName ||
-          values.emergencyContactPhone ||
-          values.emergencyContactRelation
+            values.emergencyContactPhone ||
+            values.emergencyContactRelation
             ? {
-                name: values.emergencyContactName || "",
-                phone: values.emergencyContactPhone || "",
-                relation: values.emergencyContactRelation || undefined,
-              }
+              name: values.emergencyContactName || "",
+              phone: values.emergencyContactPhone || "",
+              relation: values.emergencyContactRelation || undefined,
+            }
             : undefined,
       });
 
@@ -250,6 +263,15 @@ const PassengerProfilePage = () => {
                 <RequestRideButton
                   savedLocations={dashboardSummary.savedLocations}
                   defaultPickup={dashboardSummary.passenger.defaultLocation}
+                  disabled={Boolean(dashboardSummary.activeBooking)}
+                  disabledReason={
+                    dashboardSummary.activeBooking
+                      ? "A trip is already in progress. Finish or cancel it before requesting another ride."
+                      : undefined
+                  }
+                  isOpen={isRideRequestOpen}
+                  onOpenChange={setIsRideRequestOpen}
+                  initialPickup={mapSelectedLocation}
                   onSuccess={() => {
                     toast({
                       title: "Ride requested!",
@@ -260,14 +282,49 @@ const PassengerProfilePage = () => {
                 />
               </div>
             )}
-            
+
+            {dashboardSummary?.activeBooking ? (
+              <ActiveTripCard booking={dashboardSummary.activeBooking} />
+            ) : null}
+
+            {completedRidePrompt ? (
+              <PostTripActionsCard
+                rideId={completedRidePrompt.rideId}
+                fareHint={completedRidePrompt.fare}
+                completedAt={completedRidePrompt.completedAt}
+                onDone={dismissCompletedRidePrompt}
+              />
+            ) : null}
+
             {dashboardSummary ? (
-              <PassengerMap 
+              <PassengerMap
                 summary={dashboardSummary}
                 currentLocation={currentLocation}
                 useRealLocation={useRealLocation}
                 onToggleRealLocation={() => setUseRealLocation(!useRealLocation)}
                 locationError={geolocation.error?.message}
+                activeTripLocation={
+                  activeTripLocation
+                    ? {
+                      latitude: activeTripLocation.location.latitude,
+                      longitude: activeTripLocation.location.longitude,
+                      timestamp: activeTripLocation.timestamp,
+                    }
+                    : null
+                }
+                onMapClick={(location) => {
+                  if (dashboardSummary.activeBooking) return;
+                  setMapSelectedLocation({
+                    latitude: location.latitude,
+                    longitude: location.longitude,
+                    address: "Selected on Map"
+                  });
+                  setIsRideRequestOpen(true);
+                  toast({
+                    title: "Location Selected",
+                    description: "Pickup location set from map tap.",
+                  });
+                }}
               />
             ) : isDashboardLoading ? (
               <div className="h-80 animate-pulse rounded-3xl border border-white/10 bg-white/5" />

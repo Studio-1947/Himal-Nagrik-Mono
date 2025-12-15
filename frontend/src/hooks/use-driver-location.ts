@@ -1,19 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGeolocation } from './use-geolocation';
 import { dispatchService, type DriverAvailability } from '@/lib/dispatch-service';
+import { tripService } from '@/lib/trip-service';
 
 export interface UseDriverLocationOptions {
   token: string | null;
   capacity: number;
   autoHeartbeat?: boolean; // Automatically send heartbeat with GPS location
   heartbeatInterval?: number; // In milliseconds
+  activeRideId?: string | null;
 }
+
+const TRIP_LOCATION_INTERVAL = 5000; // 5s throttle
 
 export const useDriverLocation = ({
   token,
   capacity,
   autoHeartbeat = true,
   heartbeatInterval = 30000, // 30 seconds default
+  activeRideId = null,
 }: UseDriverLocationOptions) => {
   const [isOnline, setIsOnline] = useState(false);
   const [availability, setAvailability] = useState<DriverAvailability | null>(null);
@@ -21,6 +26,7 @@ export const useDriverLocation = ({
   const [lastHeartbeatAt, setLastHeartbeatAt] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const heartbeatTimerRef = useRef<number | null>(null);
+  const lastTripUpdateRef = useRef<number>(0);
 
   // Get driver's real-time GPS location
   const geolocation = useGeolocation({
@@ -85,6 +91,31 @@ export const useDriverLocation = ({
     [token, capacity, isOnline, geolocation.position]
   );
 
+  const sendTripLocation = useCallback(async () => {
+    if (!token || !activeRideId || !geolocation.position) {
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastTripUpdateRef.current < TRIP_LOCATION_INTERVAL) {
+      return;
+    }
+    lastTripUpdateRef.current = now;
+
+    try {
+      await tripService.updateLocation(token, activeRideId, {
+        location: {
+          latitude: geolocation.position.latitude,
+          longitude: geolocation.position.longitude,
+        },
+        speed: geolocation.position.speed ?? undefined,
+        heading: geolocation.position.heading ?? undefined,
+      });
+    } catch (error) {
+      console.warn('[Driver Location] Failed to push trip location', error);
+    }
+  }, [token, activeRideId, geolocation.position]);
+
   // Go online (send available heartbeat)
   const goOnline = useCallback(async () => {
     await sendHeartbeat('available');
@@ -145,6 +176,25 @@ export const useDriverLocation = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [geolocation.position?.latitude, geolocation.position?.longitude, isOnline]);
+
+  useEffect(() => {
+    if (!isOnline || !activeRideId) {
+      return;
+    }
+
+    if (geolocation.position) {
+      void sendTripLocation();
+    }
+  }, [
+    isOnline,
+    activeRideId,
+    geolocation.position?.latitude,
+    geolocation.position?.longitude,
+    geolocation.position?.speed,
+    geolocation.position?.heading,
+    geolocation.position,
+    sendTripLocation,
+  ]);
 
   return {
     // GPS data

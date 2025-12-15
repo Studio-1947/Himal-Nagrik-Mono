@@ -19,9 +19,10 @@ interface BookingData {
 interface BookingSuccessProps {
   bookingData: BookingData;
   onNewBooking: () => void;
+  onTrackRide: () => void;
 }
 
-export const BookingSuccess = ({ bookingData, onNewBooking }: BookingSuccessProps) => {
+export const BookingSuccess = ({ bookingData, onNewBooking, onTrackRide }: BookingSuccessProps) => {
   const { toast } = useToast();
 
   const copyBookingId = async () => {
@@ -141,7 +142,10 @@ export const BookingSuccess = ({ bookingData, onNewBooking }: BookingSuccessProp
       </Card>
 
       <div className="space-y-3">
-        <Button variant="outline" size="lg" className="w-full" onClick={onNewBooking}>
+        <Button variant="outline" size="lg" className="w-full" onClick={onTrackRide}>
+          Track Active Ride
+        </Button>
+        <Button variant="ghost" size="sm" className="w-full" onClick={onNewBooking}>
           Book Another Trip
         </Button>
 

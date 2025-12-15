@@ -1,7 +1,9 @@
-import { eq } from 'drizzle-orm';
-import { db } from '../../infra/database';
+import { eq, and, or } from 'drizzle-orm';
+import { database } from '../../infra/database';
 import { rides } from '../../infra/database/schema/users';
 import type { TripRecord, LocationPoint } from './trip.types';
+
+const db = database.db;
 
 export const tripRepository = {
   async getRideById(rideId: string) {
@@ -13,11 +15,11 @@ export const tripRepository = {
     rideId: string,
     updates: {
       status?:
-        | 'enroute_pickup'
-        | 'passenger_onboard'
-        | 'completed'
-        | 'cancelled_driver'
-        | 'cancelled_passenger';
+      | 'enroute_pickup'
+      | 'passenger_onboard'
+      | 'completed'
+      | 'cancelled_driver'
+      | 'cancelled_passenger';
       arrivedAt?: Date;
       startedAt?: Date;
       completedAt?: Date;
@@ -41,10 +43,14 @@ export const tripRepository = {
     return db
       .select()
       .from(rides)
-      .where(eq(rides.driverId, driverId))
       .where(
-        eq(rides.status, 'enroute_pickup') ||
-          eq(rides.status, 'passenger_onboard'),
+        and(
+          eq(rides.driverId, driverId),
+          or(
+            eq(rides.status, 'enroute_pickup'),
+            eq(rides.status, 'passenger_onboard'),
+          ),
+        ),
       );
   },
 
@@ -52,10 +58,14 @@ export const tripRepository = {
     return db
       .select()
       .from(rides)
-      .where(eq(rides.passengerId, passengerId))
       .where(
-        eq(rides.status, 'enroute_pickup') ||
-          eq(rides.status, 'passenger_onboard'),
+        and(
+          eq(rides.passengerId, passengerId),
+          or(
+            eq(rides.status, 'enroute_pickup'),
+            eq(rides.status, 'passenger_onboard'),
+          ),
+        ),
       );
   },
 

@@ -5,11 +5,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
+import { ActiveRideDisplay } from "@/components/driver/ActiveRideDisplay";
 import {
   dispatchService,
   type DispatchOffer,
   type DriverAvailability,
 } from "@/lib/dispatch-service";
+import { tripService } from "@/lib/trip-service";
+import { bookingService, type BookingResponse } from "@/lib/booking-service";
 
 type DispatchTestPanelProps = {
   token: string;
@@ -62,6 +65,9 @@ export const DispatchTestPanel = ({
   const [lastOffersRefresh, setLastOffersRefresh] = useState<string | null>(
     null,
   );
+  const [activeBooking, setActiveBooking] = useState<BookingResponse | null>(null);
+  const [isAdvancingTrip, setIsAdvancingTrip] = useState(false);
+  const [isCompletingTrip, setIsCompletingTrip] = useState(false);
 
   const [isSendingHeartbeat, setIsSendingHeartbeat] = useState(false);
   const [isRefreshingOffers, setIsRefreshingOffers] = useState(false);
@@ -178,6 +184,7 @@ export const DispatchTestPanel = ({
         title: "Offer accepted",
         description: `Booking ${booking.id} marked ${booking.status}.`,
       });
+      setActiveBooking(booking);
       await refreshOffers();
     } catch (error) {
       const message =
@@ -213,6 +220,88 @@ export const DispatchTestPanel = ({
       setRejectingOfferId(null);
     }
   };
+
+  const loadActiveTrip = useCallback(async () => {
+    try {
+      const trip = await tripService.getCurrentTrip(token);
+      if (trip) {
+        const booking = await bookingService.get(token, trip.rideId);
+        setActiveBooking(booking);
+      } else {
+        setActiveBooking(null);
+      }
+    } catch (error) {
+      console.error("Failed to load active trip", error);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    void loadActiveTrip();
+  }, [loadActiveTrip]);
+
+  const advanceTripStatus = useCallback(async () => {
+    if (!activeBooking) return;
+    try {
+      setIsAdvancingTrip(true);
+      const trip = await tripService.startTrip(token, { rideId: activeBooking.id });
+      setActiveBooking((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: trip.status as BookingResponse["status"],
+              lastUpdatedAt: new Date().toISOString(),
+            }
+          : prev,
+      );
+      toast({
+        title:
+          trip.status === "passenger_onboard"
+            ? "Passenger onboard"
+            : "Heading to pickup",
+        description:
+          trip.status === "passenger_onboard"
+            ? "Drive safely to the destination."
+            : "Navigate to the pickup point.",
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to update trip status.";
+      toast({
+        variant: "destructive",
+        title: "Trip update failed",
+        description: message,
+      });
+    } finally {
+      setIsAdvancingTrip(false);
+    }
+  }, [activeBooking, token]);
+
+  const completeTrip = useCallback(async () => {
+    if (!activeBooking) return;
+    try {
+      setIsCompletingTrip(true);
+      const trip = await tripService.completeTrip(token, activeBooking.id, {});
+      toast({
+        title: "Trip completed",
+        description: trip.actualFare
+          ? `Collect Rs ${trip.actualFare} from passenger.`
+          : "Great job! Ready for the next ride.",
+      });
+      setActiveBooking(null);
+      await refreshOffers();
+      await loadActiveTrip();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to complete trip.";
+      toast({
+        variant: "destructive",
+        title: "Trip completion failed",
+        description: message,
+      });
+    } finally {
+      setIsCompletingTrip(false);
+    }
+  }, [activeBooking, token, refreshOffers, loadActiveTrip]);
 
   const heartbeatSummary = useMemo(() => {
     if (!availability) {
@@ -350,6 +439,31 @@ export const DispatchTestPanel = ({
           {offersRefreshedAtLabel ? (
             <p className="mt-1 text-xs text-slate-400">{offersRefreshedAtLabel}</p>
           ) : null}
+
+          {activeBooking && (
+            <div className="mt-6 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
+                    Active Trip
+                  </p>
+                  <p className="text-sm text-slate-300">
+                    Booking {activeBooking.id.slice(0, 8)}
+                  </p>
+                </div>
+                <Badge className="bg-emerald-500/15 text-emerald-200">
+                  {activeBooking.status.replace(/_/g, " ")}
+                </Badge>
+              </div>
+              <ActiveRideDisplay
+                booking={activeBooking}
+                onStartTrip={advanceTripStatus}
+                onCompleteTrip={completeTrip}
+                isAdvancingTrip={isAdvancingTrip}
+                isCompletingTrip={isCompletingTrip}
+              />
+            </div>
+          )}
 
           <div className="mt-4 space-y-3">
             {offers.length === 0 ? (

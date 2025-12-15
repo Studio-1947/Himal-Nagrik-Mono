@@ -57,7 +57,7 @@ const authenticate = async (
   try {
     const { user } = await authService.authenticate(token);
     (req as AuthenticatedRequest).token = token;
-    (req as AuthenticatedRequest).user = user;
+    (req as unknown as AuthenticatedRequest).user = user;
     next();
   } catch (error) {
     if (!handleErrorResponse(error, res)) {
@@ -75,7 +75,7 @@ router.post(
   async (req, res, next) => {
     try {
       const payload = createBookingSchema.parse(req.body) as CreateBookingInput;
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       const booking = await bookingService.createBooking(user, payload);
       res.status(201).json(booking);
     } catch (error) {
@@ -94,7 +94,7 @@ router.get(
   async (req, res, next) => {
     try {
       const params = bookingIdSchema.parse(req.params);
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       const booking = await bookingService.getBooking(params.id, user);
       res.json(booking);
     } catch (error) {
@@ -114,7 +114,7 @@ router.post(
     try {
       const params = bookingIdSchema.parse(req.params);
       const body = cancelBookingSchema.parse(req.body) as CancelBookingInput;
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       const booking = await bookingService.cancelBooking(params.id, user, body.reason);
       res.json(booking);
     } catch (error) {

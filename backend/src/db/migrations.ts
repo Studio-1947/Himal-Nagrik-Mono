@@ -260,6 +260,10 @@ CREATE INDEX IF NOT EXISTS support_tickets_status_idx ON support_tickets (status
 CREATE INDEX IF NOT EXISTS support_tickets_priority_idx ON support_tickets (priority);
 `;
 
+const addScheduledAtToRides = `
+ALTER TABLE rides ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMPTZ;
+`;
+
 export const runMigrations = async (): Promise<void> => {
   await pool.query(createUsersTable);
   await pool.query(createEmailIndex);
@@ -273,6 +277,8 @@ export const runMigrations = async (): Promise<void> => {
   await pool.query(createPassengerSavedLocationsIndex);
   await pool.query(createRidesTable);
   await pool.query(createRidesIndexes);
+  // Add missing column to rides
+  await pool.query(addScheduledAtToRides);
   await pool.query(createRideEventsTable);
   await pool.query(createRideEventsIndex);
   await pool.query(createRideAssignmentsTable);

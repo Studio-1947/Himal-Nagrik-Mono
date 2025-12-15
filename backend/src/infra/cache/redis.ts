@@ -13,6 +13,7 @@ const createRedisAdapter = (client: Redis): RedisClientType => ({
   quit: () => client.quit(),
   lPush: (key, value) => client.lpush(key, value),
   rPop: (key) => client.rpop(key),
+  lRange: (key, start, stop) => client.lrange(key, start, stop),
   zAdd: (key, members) => {
     if (members.length === 0) {
       return Promise.resolve(0);
@@ -49,6 +50,16 @@ const createRedisAdapter = (client: Redis): RedisClientType => ({
   },
   del: (...keys) => client.del(...keys),
   keys: (pattern) => client.keys(pattern),
+  get: (key) => client.get(key),
+  set: (key, value, options) => {
+    if (options?.EX) {
+      return client.set(key, value, 'EX', options.EX);
+    }
+    return client.set(key, value);
+  },
+  sAdd: (key, ...members) => client.sadd(key, ...members),
+  sRem: (key, ...members) => client.srem(key, ...members),
+  lTrim: (key, start, stop) => client.ltrim(key, start, stop),
 });
 
 export const connectRedis = async (): Promise<RedisClientType | null> => {

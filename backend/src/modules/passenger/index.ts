@@ -8,4 +8,10 @@ export const passengerModule: ModuleDefinition = {
 };
 
 export * from './passenger.types';
-export * from './passenger.validation';
+export {
+  locationPointSchema,
+  createSavedLocationSchema,
+  passengerProfilePatchSchema,
+  savedLocationParamsSchema,
+  passengerDashboardQuerySchema,
+} from './passenger.validation';

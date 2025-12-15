@@ -39,7 +39,7 @@ const DriverLoginPage = () => {
   // Auto-redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated && role === "driver") {
-      const fallback = "/driver/profile";
+      const fallback = "/driver/dashboard";
       navigate(from ?? fallback, { replace: true });
     }
   }, [isAuthenticated, role, navigate, from]);
@@ -47,7 +47,7 @@ const DriverLoginPage = () => {
   const handleSuccess = (session: AuthSession) => {
     const fallback =
       session.profile.role === "driver"
-        ? "/driver/profile"
+        ? "/driver/dashboard"
         : "/passenger/profile";
     // Use setTimeout to ensure navigation happens after state updates
     setTimeout(() => {

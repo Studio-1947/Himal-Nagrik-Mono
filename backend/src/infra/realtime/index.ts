@@ -17,8 +17,8 @@ type OutboundEvent = {
 
 let gateway: WebSocketServer | null = null;
 
-const channelSubscriptions = new Map<string, Set<WebSocket>>();
-const socketSubscriptions = new WeakMap<WebSocket, Set<string>>();
+let channelSubscriptions = new Map<string, Set<WebSocket>>();
+let socketSubscriptions = new WeakMap<WebSocket, Set<string>>();
 
 const send = (socket: WebSocket, payload: unknown): void => {
   if (socket.readyState !== WebSocket.OPEN) {
@@ -195,8 +195,8 @@ export const stopRealtimeGateway = (): void => {
   gateway.close();
   gateway = null;
 
-  channelSubscriptions.clear();
-  socketSubscriptions.clear();
+  channelSubscriptions = new Map();
+  socketSubscriptions = new WeakMap();
 
   console.log('[realtime] WebSocket gateway stopped');
 };

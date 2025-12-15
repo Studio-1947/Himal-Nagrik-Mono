@@ -8,6 +8,7 @@ import DriverSignupPage from "@/pages/auth/DriverSignup";
 import PassengerLoginPage from "@/pages/auth/PassengerLogin";
 import PassengerSignupPage from "@/pages/auth/PassengerSignup";
 import DriverProfilePage from "@/pages/driver/Profile";
+import DriverDashboard from "@/pages/driver/Dashboard";
 import DriverEarningsPage from "@/pages/driver/Earnings";
 import Index from "@/pages/index";
 import NotFound from "@/pages/NotFound";
@@ -44,6 +45,14 @@ const App = () => (
               element={
                 <ProtectedRoute requiredRole="driver">
                   <DriverProfilePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/driver/dashboard"
+              element={
+                <ProtectedRoute requiredRole="driver">
+                  <DriverDashboard />
                 </ProtectedRoute>
               }
             />

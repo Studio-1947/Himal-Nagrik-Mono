@@ -103,7 +103,7 @@ const DriverProfilePage = () => {
   const [activeBooking, setActiveBooking] = useState<BookingResponse | null>(null);
   const [isAdvancingTrip, setIsAdvancingTrip] = useState(false);
   const [isCompletingTrip, setIsCompletingTrip] = useState(false);
-  
+
   // Driver offers hook - handles real-time ride requests
   const {
     currentOffer,
@@ -112,7 +112,7 @@ const DriverProfilePage = () => {
     acceptOffer,
     rejectOffer,
   } = useDriverOffers();
-  
+
   // Debug: Log when currentOffer changes
   useEffect(() => {
     console.log('[Driver Profile] currentOffer changed:', currentOffer);
@@ -183,10 +183,10 @@ const DriverProfilePage = () => {
       setActiveBooking((booking) =>
         booking
           ? {
-              ...booking,
-              status: trip.status as BookingResponse["status"],
-              lastUpdatedAt: new Date().toISOString(),
-            }
+            ...booking,
+            status: trip.status as BookingResponse["status"],
+            lastUpdatedAt: new Date().toISOString(),
+          }
           : booking,
       );
 
@@ -484,10 +484,10 @@ const DriverProfilePage = () => {
           </div>
           <div className="flex items-center gap-3">
             <Link
-              to="/"
+              to="/driver/dashboard"
               className="inline-flex items-center gap-2 rounded-full border border-white/20 px-5 py-2 text-sm text-slate-200 hover:bg-white/10"
             >
-              Home
+              Dashboard
             </Link>
             <Button
               variant="outline"
@@ -527,6 +527,7 @@ const DriverProfilePage = () => {
               <DriverLocationStatus
                 token={session.token}
                 capacity={profile.vehicle.capacity}
+                activeRideId={activeBooking?.id ?? null}
                 onStatusChange={(isOnline) => {
                   console.log('[Driver Profile] Status changed:', isOnline);
                 }}
@@ -870,8 +871,8 @@ const DriverProfilePage = () => {
                             document.status === "approved"
                               ? "bg-emerald-500/15 text-emerald-200"
                               : document.status === "rejected"
-                              ? "bg-red-500/15 text-red-200"
-                              : "bg-slate-700/40 text-slate-200"
+                                ? "bg-red-500/15 text-red-200"
+                                : "bg-slate-700/40 text-slate-200"
                           }
                         >
                           {document.status}

@@ -2,18 +2,19 @@ import { useEffect } from 'react';
 import { MapPin, Navigation, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import type { UseDriverLocationOptions } from '@/hooks/use-driver-location';
 import { useDriverLocation } from '@/hooks/use-driver-location';
 
 interface DriverLocationStatusProps {
   token: string;
   capacity: number;
+  activeRideId?: string | null;
   onStatusChange?: (isOnline: boolean) => void;
 }
 
 export const DriverLocationStatus = ({
   token,
   capacity,
+  activeRideId = null,
   onStatusChange,
 }: DriverLocationStatusProps) => {
   const driverLocation = useDriverLocation({
@@ -21,6 +22,7 @@ export const DriverLocationStatus = ({
     capacity,
     autoHeartbeat: true,
     heartbeatInterval: 30000, // 30 seconds
+    activeRideId,
   });
 
   // Notify parent of status changes

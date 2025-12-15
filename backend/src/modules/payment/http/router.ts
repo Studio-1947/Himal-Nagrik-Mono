@@ -62,7 +62,7 @@ const authenticate = async (
   try {
     const { user } = await authService.authenticate(token);
     (req as AuthenticatedRequest).token = token;
-    (req as AuthenticatedRequest).user = user;
+    (req as unknown as AuthenticatedRequest).user = user;
     next();
   } catch (error) {
     if (!handleErrorResponse(error, res)) {
@@ -80,7 +80,7 @@ router.post(
   },
   async (req, res, next) => {
     try {
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       if (user.role !== 'passenger') {
         res.status(403).json({ message: 'Only passengers can create payments' });
         return;
@@ -145,7 +145,7 @@ router.get(
   },
   async (req, res, next) => {
     try {
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       const params = paymentIdSchema.parse(req.params);
       const payment = await paymentService.getPayment(params.id, user);
       res.json(payment);
@@ -165,7 +165,7 @@ router.get(
   },
   async (req, res, next) => {
     try {
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       const limit = req.query.limit
         ? Math.min(Math.max(parseInt(req.query.limit as string, 10), 1), 100)
         : 20;
@@ -187,7 +187,7 @@ router.post(
   },
   async (req, res, next) => {
     try {
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       if (user.role !== 'driver') {
         res.status(403).json({ message: 'Only drivers can request payouts' });
         return;
@@ -216,7 +216,7 @@ router.get(
   },
   async (req, res, next) => {
     try {
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       if (user.role !== 'driver') {
         res.status(403).json({ message: 'Only drivers can view payout history' });
         return;
@@ -243,7 +243,7 @@ router.get(
   },
   async (req, res, next) => {
     try {
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       if (user.role !== 'driver') {
         res.status(403).json({ message: 'Only drivers can view payment summary' });
         return;

@@ -56,7 +56,7 @@ const authenticate = async (
   try {
     const { user } = await authService.authenticate(token);
     (req as AuthenticatedRequest).token = token;
-    (req as AuthenticatedRequest).user = user;
+    (req as unknown as AuthenticatedRequest).user = user;
     next();
   } catch (error) {
     if (!handleErrorResponse(error, res)) {
@@ -74,7 +74,7 @@ router.post(
   },
   async (req, res, next) => {
     try {
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       const payload = createTicketSchema.parse(req.body) as CreateTicketInput;
       const ticket = await supportService.createTicket(user, payload);
       res.status(201).json(ticket);
@@ -94,7 +94,7 @@ router.get(
   },
   async (req, res, next) => {
     try {
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       const params = ticketIdSchema.parse(req.params);
       const ticket = await supportService.getTicket(params.id, user);
       res.json(ticket);
@@ -114,7 +114,7 @@ router.get(
   },
   async (req, res, next) => {
     try {
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       const limit = req.query.limit
         ? Math.min(Math.max(parseInt(req.query.limit as string, 10), 1), 100)
         : 20;
@@ -136,7 +136,7 @@ router.get(
   },
   async (req, res, next) => {
     try {
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       const rideId = req.params.rideId;
       const tickets = await supportService.getRideTickets(rideId, user);
       res.json({ tickets, total: tickets.length });
@@ -156,7 +156,7 @@ router.get(
   },
   async (req, res, next) => {
     try {
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       const summary = await supportService.getTicketSummary(user);
       res.json(summary);
     } catch (error) {
@@ -175,7 +175,7 @@ router.put(
   },
   async (req, res, next) => {
     try {
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       const params = ticketIdSchema.parse(req.params);
       const updates = updateTicketSchema.parse(req.body) as UpdateTicketInput;
       const ticket = await supportService.updateTicket(params.id, user, updates);
@@ -196,7 +196,7 @@ router.delete(
   },
   async (req, res, next) => {
     try {
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       const params = ticketIdSchema.parse(req.params);
       await supportService.deleteTicket(params.id, user);
       res.status(204).send();

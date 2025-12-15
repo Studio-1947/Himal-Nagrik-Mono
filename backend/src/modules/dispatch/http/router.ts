@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { authService, AuthError } from '../../auth/auth.service';
 import type { DbUser } from '../../auth/auth.types';
 import { bookingRepository } from '../../booking/booking.repository';
-import { mapBookingRecordToResponse } from '../../booking/booking.service';
+import { mapBookingRecordToResponse } from '../../booking/booking.mapper';
 import { dispatchService, DispatchError } from '../dispatch.service';
 import {
   heartbeatSchema,
@@ -65,7 +65,7 @@ const authenticateDriver = async (
       return;
     }
     (req as AuthenticatedRequest).token = token;
-    (req as AuthenticatedRequest).user = user;
+    (req as unknown as AuthenticatedRequest).user = user;
     next();
   } catch (error) {
     if (!handleErrorResponse(error, res)) {
@@ -83,7 +83,7 @@ router.post(
   async (req, res, next) => {
     try {
       const input = heartbeatSchema.parse(req.body) as HeartbeatInput;
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       const availability = await dispatchService.registerHeartbeat(user.id, input);
       res.json(availability);
     } catch (error) {
@@ -143,7 +143,7 @@ router.get(
   },
   async (req, res, next) => {
     try {
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       const offers = await dispatchService.listOffers(user.id);
       res.json(offers);
     } catch (error) {
@@ -163,7 +163,7 @@ router.post(
     try {
       const params = offerParamsSchema.parse(req.params);
       offerActionSchema.parse(req.body ?? {}) as OfferActionInput;
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       const booking = await dispatchService.acceptOffer(user.id, params.id);
       res.json(booking);
     } catch (error) {
@@ -183,7 +183,7 @@ router.post(
     try {
       const params = offerParamsSchema.parse(req.params);
       const body = offerActionSchema.parse(req.body ?? {}) as OfferActionInput;
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       await dispatchService.rejectOffer(user.id, params.id, body.etaMinutes ? `Driver ETA ${body.etaMinutes} mins` : undefined);
       res.status(204).end();
     } catch (error) {

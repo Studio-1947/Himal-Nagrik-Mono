@@ -20,6 +20,17 @@ export const usePassengerDashboard = () => {
   const [query, setQuery] = useState<FetchDashboardSummaryParams | undefined>();
   const [events, setEvents] = useState<RealtimeEvent[]>([]);
   const [useRealLocation, setUseRealLocation] = useState(true);
+  const [activeTripLocation, setActiveTripLocation] = useState<{
+    rideId: string;
+    location: { latitude: number; longitude: number };
+    timestamp: string;
+  } | null>(null);
+  const [completedRidePrompt, setCompletedRidePrompt] = useState<{
+    rideId: string;
+    driverId?: string;
+    fare?: unknown;
+    completedAt?: string;
+  } | null>(null);
   const refreshTimeoutRef = useRef<number | null>(null);
   
   // Get user's real-time location
@@ -74,6 +85,12 @@ export const usePassengerDashboard = () => {
       void loadDashboard();
     }
   }, [canLoad, loadDashboard]);
+
+  useEffect(() => {
+    if (!summary?.activeBooking) {
+      setActiveTripLocation(null);
+    }
+  }, [summary?.activeBooking]);
 
   useEffect(() => {
     if (!canLoad) {
@@ -132,6 +149,53 @@ export const usePassengerDashboard = () => {
         if (event.type.startsWith("booking.")) {
           setEvents((prev) => [...prev.slice(-MAX_EVENTS + 1), event]);
           scheduleRealtimeRefresh();
+        } else if (event.type === "trip.location") {
+          const payload = event.payload as {
+            rideId?: string;
+            location?: { latitude: number; longitude: number };
+            timestamp?: string;
+          };
+          if (
+            payload.rideId &&
+            payload.location &&
+            summary.activeBooking &&
+            payload.rideId === summary.activeBooking.id
+          ) {
+            setActiveTripLocation({
+              rideId: payload.rideId,
+              location: payload.location,
+              timestamp: payload.timestamp ?? new Date().toISOString(),
+            });
+          }
+        } else if (event.type === "trip.completed") {
+          setActiveTripLocation(null);
+          setSummary((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  activeBooking:
+                    prev.activeBooking &&
+                    prev.activeBooking.id === (event.payload as { rideId?: string }).rideId
+                      ? null
+                      : prev.activeBooking,
+                }
+              : prev,
+          );
+          const payload = event.payload as {
+            rideId?: string;
+            driverId?: string;
+            fare?: unknown;
+            completedAt?: string;
+          };
+          if (payload?.rideId) {
+            setCompletedRidePrompt({
+              rideId: payload.rideId,
+              driverId: payload.driverId,
+              fare: payload.fare,
+              completedAt: payload.completedAt,
+            });
+          }
+          scheduleRealtimeRefresh();
         }
       }),
     );
@@ -161,6 +225,9 @@ export const usePassengerDashboard = () => {
     },
     currentQuery: query,
     events,
+    activeTripLocation,
+    completedRidePrompt,
+    dismissCompletedRidePrompt: () => setCompletedRidePrompt(null),
     // Location-related
     geolocation,
     useRealLocation,
