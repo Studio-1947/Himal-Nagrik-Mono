@@ -194,8 +194,14 @@ const upsertUser = async (seed: SeedUser) => {
     .limit(1);
 
   if (existing.length > 0) {
-    log(`User ${seed.email} already present`);
-    return existing[0];
+    log(`User ${seed.email} already present - Updating password to ensure access`);
+    const passwordHash = await bcrypt.hash(seed.password, SALT_ROUNDS);
+    await database.db
+      .update(appUsers)
+      .set({ passwordHash })
+      .where(eq(appUsers.email, seed.email));
+
+    return { ...existing[0], passwordHash };
   }
 
   const id = seed.id ?? randomUUID();

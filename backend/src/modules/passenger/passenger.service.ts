@@ -7,6 +7,7 @@ import { mapBookingRecordToResponse } from '../booking/booking.mapper';
 import type { BookingRecord } from '../booking/booking.types';
 import { dispatchService } from '../dispatch/dispatch.service';
 import type { DriverAvailabilitySummary } from '../dispatch/dispatch.types';
+import { tripService } from '../trip/trip.service';
 import { passengerRepository } from './passenger.repository';
 import type {
   CreateSavedLocationInput,
@@ -104,9 +105,9 @@ export const passengerService = {
     const recentRecordsPromise =
       recentTripsRequested > 0
         ? bookingRepository.listRecentBookingsForPassenger(
-            passenger.id,
-            recentTripsRequested,
-          )
+          passenger.id,
+          recentTripsRequested,
+        )
         : Promise.resolve<BookingRecord[]>([]);
 
     const [activeRecord, recentRecords] = await Promise.all([
@@ -128,6 +129,20 @@ export const passengerService = {
         limit: limitDrivers,
       });
 
+    let activeTripLocation: PassengerDashboardSummary['activeTripLocation'] = null;
+    if (activeBooking) {
+      if (activeBooking.status === 'enroute_pickup' || activeBooking.status === 'passenger_onboard') {
+        const tripDetails = await tripService.getTripDetails(activeBooking.id, currentUser).catch(() => null);
+        if (tripDetails?.currentLocation) {
+          activeTripLocation = {
+            latitude: tripDetails.currentLocation.latitude,
+            longitude: tripDetails.currentLocation.longitude,
+            timestamp: new Date().toISOString(),
+          };
+        }
+      }
+    }
+
     return {
       passenger: {
         id: passenger.id,
@@ -139,6 +154,7 @@ export const passengerService = {
         radiusKm,
       },
       activeBooking,
+      activeTripLocation,
       recentTrips,
       savedLocations,
     };

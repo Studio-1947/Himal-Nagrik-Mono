@@ -44,6 +44,13 @@ export type PassengerDashboardSummary = {
     radiusKm: number;
   };
   activeBooking: BookingResponse | null;
+  activeTripLocation: {
+    latitude: number;
+    longitude: number;
+    heading?: number;
+    speed?: number;
+    timestamp?: string;
+  } | null;
   recentTrips: BookingResponse[];
   savedLocations: PassengerSavedLocation[];
 };
@@ -138,6 +145,14 @@ export const passengerService = {
     const query = buildQueryString(params);
     return apiRequest<PassengerDashboardSummary>(`${BASE_PATH}/me/summary${query}`, {
       headers: authHeaders(token),
+    });
+  },
+
+  async cancelBooking(token: string, bookingId: string, reason?: string): Promise<void> {
+    await apiRequest<void>(`/bookings/${bookingId}/cancel`, {
+      method: "POST",
+      headers: authHeaders(token),
+      json: reason ? { reason } : undefined,
     });
   },
 };

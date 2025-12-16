@@ -297,7 +297,11 @@ export const tripService = {
   },
 
   async getTripHistory(user: DbUser, limit = 20) {
-    const rides = await tripRepository.getRideHistory(user.id, user.role, limit);
+    // Admins don't have a personal 'trip history' in this context, or we can treat them as passengers for now if needed.
+    // For now, we'll cast to suppress the error as this function is primarily for the mobile app users.
+    if (user.role === 'admin') return [];
+
+    const rides = await tripRepository.getRideHistory(user.id, user.role as 'passenger' | 'driver', limit);
     return rides.map((ride) => ({
       rideId: ride.id,
       status: ride.status,

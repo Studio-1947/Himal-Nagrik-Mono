@@ -27,6 +27,7 @@ temp/
 !.env.*.example
 *.local
 *.env.local
+local.properties
 
 # Logs
 logs/
@@ -44,3 +45,8 @@ Thumbs.db
 *.swp
 .idea/
 .vscode/
+
+# Mobile Builds
+android/app/build/
+android/captures/
+ios/App/App/public/

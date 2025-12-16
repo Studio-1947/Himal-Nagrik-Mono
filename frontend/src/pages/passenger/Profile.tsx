@@ -69,6 +69,7 @@ const PassengerProfilePage = () => {
     activeTripLocation,
     completedRidePrompt,
     dismissCompletedRidePrompt,
+    cancelBooking,
   } = usePassengerDashboard();
 
   const [isRideRequestOpen, setIsRideRequestOpen] = useState(false);
@@ -284,7 +285,20 @@ const PassengerProfilePage = () => {
             )}
 
             {dashboardSummary?.activeBooking ? (
-              <ActiveTripCard booking={dashboardSummary.activeBooking} />
+              <ActiveTripCard
+                booking={dashboardSummary.activeBooking}
+                onCancel={(id) => {
+                  if (confirm("Are you sure you want to cancel this ride?")) {
+                    cancelBooking(id).catch((err) => {
+                      toast({
+                        title: "Failed to cancel",
+                        description: err instanceof Error ? err.message : "Could not cancel ride",
+                        variant: "destructive"
+                      });
+                    });
+                  }
+                }}
+              />
             ) : null}
 
             {completedRidePrompt ? (

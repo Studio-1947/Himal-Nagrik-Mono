@@ -8,6 +8,7 @@ import type { BookingResponse } from "@/lib/booking-service";
 type ActiveTripCardProps = {
   booking: BookingResponse;
   onViewTrip?: (bookingId: string) => void;
+  onCancel?: (bookingId: string) => void;
 };
 
 const statusLabel = (status: BookingResponse["status"]): string => {
@@ -42,7 +43,7 @@ const statusTone = (status: BookingResponse["status"]): string => {
   }
 };
 
-export const ActiveTripCard = ({ booking, onViewTrip }: ActiveTripCardProps) => {
+export const ActiveTripCard = ({ booking, onViewTrip, onCancel }: ActiveTripCardProps) => {
   const driver = booking.driver;
   const pickup = booking.pickup;
   const dropoff = booking.dropoff;
@@ -151,6 +152,18 @@ export const ActiveTripCard = ({ booking, onViewTrip }: ActiveTripCardProps) => 
             We will keep you updated if the status changes.
           </p>
         </div>
+
+        {onCancel && ["requested", "driver_assigned", "enroute_pickup"].includes(booking.status) && (
+          <div className="mt-4 border-t border-white/10 pt-4">
+            <Button
+              variant="destructive"
+              className="w-full sm:w-auto bg-red-500/10 text-red-200 hover:bg-red-500/20 border-red-500/20"
+              onClick={() => onCancel(booking.id)}
+            >
+              Cancel Booking
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

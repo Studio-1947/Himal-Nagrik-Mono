@@ -75,12 +75,16 @@ export const driverRegisterSchema = baseRegisterSchema.extend({
   yearsOfExperience: z.coerce.number().int().min(0).optional(),
 });
 
-export const registerSchema = z.union([passengerRegisterSchema, driverRegisterSchema]);
+export const adminRegisterSchema = baseRegisterSchema.extend({
+  role: z.literal('admin'),
+});
+
+export const registerSchema = z.union([passengerRegisterSchema, driverRegisterSchema, adminRegisterSchema]);
 
 export const loginSchema = z.object({
   identifier: z.string().trim().min(1),
   password: z.string().min(1),
-  role: z.enum(['passenger', 'driver']),
+  role: z.enum(['passenger', 'driver', 'admin']),
 });
 
 export const passengerRecentTripSchema: z.ZodType<PassengerRecentTrip> = z.object({
@@ -126,3 +130,4 @@ export type LoginInput = z.infer<typeof loginSchema>;
 export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;
 export type PassengerProfileUpdateInput = z.infer<typeof passengerProfileUpdateSchema>;
 export type DriverProfileUpdateInput = z.infer<typeof driverProfileUpdateSchema>;
+export type AdminRegisterInput = z.infer<typeof adminRegisterSchema>;

@@ -11,7 +11,7 @@ import {
 
 export const appUsers = pgTable('app_users', {
   id: uuid('id').primaryKey(),
-  role: text('role').$type<'passenger' | 'driver'>().notNull(),
+  role: text('role').$type<'passenger' | 'driver' | 'admin'>().notNull(),
   name: text('name').notNull(),
   email: text('email').notNull(),
   passwordHash: text('password_hash').notNull(),

@@ -1,8 +1,6 @@
-import { Router } from 'express';
+import { adminRouter } from './admin.router';
 
 import type { ModuleDefinition } from '../types';
-
-const router = Router();
 
 /**
  * Admin/operations APIs (dashboards, controls) scaffold.
@@ -10,6 +8,6 @@ const router = Router();
 export const adminModule: ModuleDefinition = {
   name: 'admin',
   basePath: '/admin',
-  router,
-  enabled: false,
+  router: adminRouter,
+  enabled: true,
 };

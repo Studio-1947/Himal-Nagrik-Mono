@@ -32,7 +32,7 @@ export const usePassengerDashboard = () => {
     completedAt?: string;
   } | null>(null);
   const refreshTimeoutRef = useRef<number | null>(null);
-  
+
   // Get user's real-time location
   const geolocation = useGeolocation({
     enableHighAccuracy: true,
@@ -50,7 +50,7 @@ export const usePassengerDashboard = () => {
       }
 
       let params = overrideParams ?? query;
-      
+
       // Use real-time location if available and enabled
       if (useRealLocation && geolocation.position && !overrideParams) {
         params = {
@@ -59,7 +59,7 @@ export const usePassengerDashboard = () => {
           lng: geolocation.position.longitude,
         };
       }
-      
+
       if (overrideParams) {
         setQuery(overrideParams);
       }
@@ -68,6 +68,19 @@ export const usePassengerDashboard = () => {
       try {
         const data = await passengerService.getDashboardSummary(token, params);
         setSummary(data);
+
+        // Initialize active trip location if available in summary
+        if (data.activeTripLocation && data.activeBooking) {
+          setActiveTripLocation({
+            rideId: data.activeBooking.id,
+            location: {
+              latitude: data.activeTripLocation.latitude,
+              longitude: data.activeTripLocation.longitude,
+            },
+            timestamp: data.activeTripLocation.timestamp ?? new Date().toISOString(),
+          });
+        }
+
         setError(null);
       } catch (err) {
         const message =
@@ -172,13 +185,13 @@ export const usePassengerDashboard = () => {
           setSummary((prev) =>
             prev
               ? {
-                  ...prev,
-                  activeBooking:
-                    prev.activeBooking &&
+                ...prev,
+                activeBooking:
+                  prev.activeBooking &&
                     prev.activeBooking.id === (event.payload as { rideId?: string }).rideId
-                      ? null
-                      : prev.activeBooking,
-                }
+                    ? null
+                    : prev.activeBooking,
+              }
               : prev,
           );
           const payload = event.payload as {
@@ -222,6 +235,15 @@ export const usePassengerDashboard = () => {
     setFocus: (params: FetchDashboardSummaryParams) => {
       setQuery(params);
       void loadDashboard(params);
+    },
+    cancelBooking: async (bookingId: string, reason?: string) => {
+      if (!token) return;
+      try {
+        await passengerService.cancelBooking(token, bookingId, reason);
+        void loadDashboard();
+      } catch (err) {
+        throw err;
+      }
     },
     currentQuery: query,
     events,

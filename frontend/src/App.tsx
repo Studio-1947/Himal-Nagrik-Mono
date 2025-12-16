@@ -14,6 +14,7 @@ import Index from "@/pages/index";
 import NotFound from "@/pages/NotFound";
 import PassengerProfilePage from "@/pages/passenger/Profile";
 import TripHistoryPage from "@/pages/TripHistory";
+import AdminDashboard from "@/pages/admin/AdminDashboard";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
@@ -69,6 +70,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <TripHistoryPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute>
+                  <AdminDashboard />
                 </ProtectedRoute>
               }
             />
