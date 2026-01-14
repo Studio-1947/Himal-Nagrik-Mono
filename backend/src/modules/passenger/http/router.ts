@@ -64,7 +64,7 @@ const authenticatePassenger = async (
       return;
     }
     (req as AuthenticatedRequest).token = token;
-    (req as AuthenticatedRequest).user = user;
+    (req as unknown as AuthenticatedRequest).user = user;
     next();
   } catch (error) {
     if (!handleErrorResponse(error, res)) {
@@ -81,7 +81,7 @@ passengerRouter.get(
   },
   async (req, res, next) => {
     try {
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       const profile = await passengerService.getSelfProfile(user.id);
       res.json(profile);
     } catch (error) {
@@ -102,7 +102,7 @@ passengerRouter.get(
       const query = passengerDashboardQuerySchema.parse(
         req.query,
       ) as PassengerDashboardQueryInput;
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
 
       const options = {
         radiusKm: query.radiusKm,
@@ -132,7 +132,7 @@ passengerRouter.patch(
   async (req, res, next) => {
     try {
       const updates = passengerProfilePatchSchema.parse(req.body) as PassengerProfilePatchInput;
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       const profile = await passengerService.updateSelfProfile(user, updates);
       res.json(profile);
     } catch (error) {
@@ -150,7 +150,7 @@ passengerRouter.get(
   },
   async (req, res, next) => {
     try {
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       const locations = await passengerService.listSavedLocations(user.id);
       res.json(locations);
     } catch (error) {
@@ -169,7 +169,7 @@ passengerRouter.post(
   async (req, res, next) => {
     try {
       const body = createSavedLocationSchema.parse(req.body) as CreateSavedLocationInput;
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       const location = await passengerService.addSavedLocation(user.id, body);
       res.status(201).json(location);
     } catch (error) {
@@ -188,7 +188,7 @@ passengerRouter.delete(
   async (req, res, next) => {
     try {
       const params = savedLocationParamsSchema.parse(req.params) as SavedLocationParamsInput;
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       await passengerService.removeSavedLocation(user.id, params.id);
       res.status(204).end();
     } catch (error) {

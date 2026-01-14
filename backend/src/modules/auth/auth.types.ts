@@ -1,5 +1,5 @@
 import type { appUsers } from '../../infra/database/schema';
-export type AuthRole = 'passenger' | 'driver';
+export type AuthRole = 'passenger' | 'driver' | 'admin';
 
 export type DbUser = typeof appUsers.$inferSelect;
 export type NewDbUser = typeof appUsers.$inferInsert;
@@ -77,7 +77,18 @@ export type DriverProfile = {
   availability: DriverAvailability;
 };
 
-export type AuthProfile = PassengerProfile | DriverProfile;
+export type AdminProfile = {
+  id: string;
+  role: 'admin';
+  name: string;
+  email: string;
+  phone?: string;
+  avatarUrl?: string;
+  location?: string;
+  bio?: string;
+};
+
+export type AuthProfile = PassengerProfile | DriverProfile | AdminProfile;
 
 export type AuthSession = {
   token: string;

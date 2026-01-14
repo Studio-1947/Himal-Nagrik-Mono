@@ -26,17 +26,17 @@ const ACTIVE_TRIPS_KEY = 'trips:active';
 const haversineDistance = (from: LocationPoint, to: LocationPoint): number => {
   const R = 6371000; // Earth radius in meters
   const toRad = (deg: number) => (deg * Math.PI) / 180;
-  
+
   const dLat = toRad(to.latitude - from.latitude);
   const dLon = toRad(to.longitude - from.longitude);
-  
+
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(toRad(from.latitude)) *
-      Math.cos(toRad(to.latitude)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  
+    Math.cos(toRad(to.latitude)) *
+    Math.sin(dLon / 2) *
+    Math.sin(dLon / 2);
+
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c; // Distance in meters
 };
@@ -158,19 +158,18 @@ export const tripService = {
     }
 
     // Broadcast real-time location update
-    publishRealtimeEvent(`ride:${rideId}`, 'trip.location_update', {
+    const payload = {
       rideId,
+      driverId,
+      passengerId: ride.passengerId,
       location: input.location,
       speed: input.speed,
       heading: input.heading,
       timestamp: new Date().toISOString(),
-    });
+    };
 
-    publishRealtimeEvent(`passenger:${ride.passengerId}`, 'trip.location_update', {
-      rideId,
-      location: input.location,
-      timestamp: new Date().toISOString(),
-    });
+    publishRealtimeEvent(`ride:${rideId}`, 'trip.location', payload);
+    publishRealtimeEvent(`passenger:${ride.passengerId}`, 'trip.location', payload);
   },
 
   async completeTrip(
@@ -213,18 +212,18 @@ export const tripService = {
 
     const fareActual = input.finalFare
       ? {
-          currency: 'INR',
-          amount: input.finalFare,
-        }
+        currency: 'INR',
+        amount: input.finalFare,
+      }
       : ride.fareQuote;
 
     const updated = await tripRepository.updateRideStatus(rideId, {
       status: 'completed',
       completedAt: new Date(),
-      distanceMeters: distanceTraveled,
+      distanceMeters: distanceTraveled || undefined,
       fareActual: fareActual as Record<string, unknown>,
       metadata: {
-        ...(ride.metadata as Record<string, unknown>),
+        ...(ride.metadata as Record<string, unknown> || {}),
         completionNotes: input.notes,
       },
     });
@@ -255,8 +254,8 @@ export const tripService = {
       status: updated.status,
       startedAt: updated.startedAt?.toISOString(),
       completedAt: updated.completedAt?.toISOString(),
-      distanceTraveled,
-      actualFare: (fareActual as { amount?: number })?.amount,
+      distanceTraveled: distanceTraveled || undefined,
+      actualFare: (fareActual as { amount?: number } | null)?.amount || undefined,
     };
   },
 
@@ -271,7 +270,7 @@ export const tripService = {
     }
 
     const ride = rides[0]; // Get most recent active ride
-    
+
     // Get current location from Redis
     let currentLocation: LocationPoint | undefined;
     const redis = getRedisClient();
@@ -282,8 +281,8 @@ export const tripService = {
       }
     }
 
-    const pickupLocation = ride.pickupLocation as LocationPoint;
-    const dropoffLocation = ride.dropoffLocation as LocationPoint;
+    const pickupLocation = ride.pickupLocation as unknown as LocationPoint;
+    const dropoffLocation = ride.dropoffLocation as unknown as LocationPoint;
 
     return {
       rideId: ride.id,
@@ -298,7 +297,11 @@ export const tripService = {
   },
 
   async getTripHistory(user: DbUser, limit = 20) {
-    const rides = await tripRepository.getRideHistory(user.id, user.role, limit);
+    // Admins don't have a personal 'trip history' in this context, or we can treat them as passengers for now if needed.
+    // For now, we'll cast to suppress the error as this function is primarily for the mobile app users.
+    if (user.role === 'admin') return [];
+
+    const rides = await tripRepository.getRideHistory(user.id, user.role as 'passenger' | 'driver', limit);
     return rides.map((ride) => ({
       rideId: ride.id,
       status: ride.status,
@@ -348,6 +351,10 @@ export const tripService = {
 };
 
 export { TripError };
+
+
+
+
 
 
 

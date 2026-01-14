@@ -11,7 +11,7 @@ import {
 
 export const appUsers = pgTable('app_users', {
   id: uuid('id').primaryKey(),
-  role: text('role').$type<'passenger' | 'driver'>().notNull(),
+  role: text('role').$type<'passenger' | 'driver' | 'admin'>().notNull(),
   name: text('name').notNull(),
   email: text('email').notNull(),
   passwordHash: text('password_hash').notNull(),
@@ -106,6 +106,7 @@ export const rides = pgTable('rides', {
   distanceMeters: integer('distance_meters'),
   durationSeconds: integer('duration_seconds'),
   requestedAt: timestamp('requested_at', { withTimezone: true }).defaultNow().notNull(),
+  scheduledAt: timestamp('scheduled_at', { withTimezone: true }),
   acceptedAt: timestamp('accepted_at', { withTimezone: true }),
   pickupEta: timestamp('pickup_eta', { withTimezone: true }),
   arrivedAt: timestamp('arrived_at', { withTimezone: true }),

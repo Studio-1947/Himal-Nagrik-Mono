@@ -61,7 +61,7 @@ const authenticate = async (
   try {
     const { user } = await authService.authenticate(token);
     (req as AuthenticatedRequest).token = token;
-    (req as AuthenticatedRequest).user = user;
+    (req as unknown as AuthenticatedRequest).user = user;
     next();
   } catch (error) {
     if (!handleErrorResponse(error, res)) {
@@ -79,7 +79,7 @@ router.post(
   },
   async (req, res, next) => {
     try {
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       if (user.role !== 'driver') {
         res.status(403).json({ message: 'Only drivers can start trips' });
         return;
@@ -104,7 +104,7 @@ router.post(
   },
   async (req, res, next) => {
     try {
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       if (user.role !== 'driver') {
         res.status(403).json({ message: 'Only drivers can update trip location' });
         return;
@@ -132,7 +132,7 @@ router.post(
   },
   async (req, res, next) => {
     try {
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       if (user.role !== 'driver') {
         res.status(403).json({ message: 'Only drivers can complete trips' });
         return;
@@ -158,7 +158,7 @@ router.get(
   },
   async (req, res, next) => {
     try {
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       const trip = await tripService.getCurrentTrip(user);
       if (!trip) {
         res.status(404).json({ message: 'No active trip found' });
@@ -181,7 +181,7 @@ router.get(
   },
   async (req, res, next) => {
     try {
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       const limit = req.query.limit
         ? Math.min(Math.max(parseInt(req.query.limit as string, 10), 1), 100)
         : 20;
@@ -203,7 +203,7 @@ router.get(
   },
   async (req, res, next) => {
     try {
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       const params = tripIdSchema.parse(req.params);
       const trip = await tripService.getTripDetails(params.id, user);
       res.json(trip);
@@ -216,6 +216,10 @@ router.get(
 );
 
 export const tripRouter = router;
+
+
+
+
 
 
 

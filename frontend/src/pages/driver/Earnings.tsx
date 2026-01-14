@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -19,21 +19,7 @@ const DriverEarningsPage = () => {
   const [payouts, setPayouts] = useState<PayoutResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    if (!isAuthenticated || !session?.token) {
-      navigate("/driver/login");
-      return;
-    }
-
-    if (profile?.role !== "driver") {
-      navigate("/");
-      return;
-    }
-
-    loadEarningsData();
-  }, [isAuthenticated, session, profile, navigate]);
-
-  const loadEarningsData = async () => {
+  const loadEarningsData = useCallback(async () => {
     if (!session?.token) return;
 
     try {
@@ -54,7 +40,21 @@ const DriverEarningsPage = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [session?.token]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !session?.token) {
+      navigate("/driver/login");
+      return;
+    }
+
+    if (profile?.role !== "driver") {
+      navigate("/");
+      return;
+    }
+
+    void loadEarningsData();
+  }, [isAuthenticated, session, profile, navigate, loadEarningsData]);
 
   const getPayoutStatusColor = (status: string) => {
     switch (status) {
@@ -197,6 +197,10 @@ const DriverEarningsPage = () => {
 };
 
 export default DriverEarningsPage;
+
+
+
+
 
 
 

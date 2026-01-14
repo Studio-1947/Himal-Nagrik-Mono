@@ -42,3 +42,5 @@ export const resetDatabaseForTesting = (): void => {
   currentPool = basePool;
   currentDb = baseDb;
 };
+
+export { db } from './drizzle';

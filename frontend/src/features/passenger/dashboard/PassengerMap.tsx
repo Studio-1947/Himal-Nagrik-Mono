@@ -11,10 +11,22 @@ import {
 
 type PassengerMapProps = {
   summary: PassengerDashboardSummary;
-  currentLocation?: GeolocationPosition | null;
+  currentLocation?: {
+    latitude: number;
+    longitude: number;
+    accuracy?: number;
+    heading?: number | null;
+    speed?: number | null;
+  } | null;
   useRealLocation?: boolean;
   onToggleRealLocation?: () => void;
   locationError?: string | null;
+  activeTripLocation?: {
+    latitude: number;
+    longitude: number;
+    timestamp?: string;
+  } | null;
+  onMapClick?: (location: { latitude: number; longitude: number }) => void;
 };
 
 type MapLibreModule = typeof import("maplibre-gl");
@@ -31,243 +43,16 @@ const StylisedFallbackMap = () => (
   </div>
 );
 
-const createDriverMarkerElement = (etaMinutes: number) => {
-  const wrapper = document.createElement("div");
-  wrapper.style.width = "60px";
-  wrapper.style.height = "60px";
-  wrapper.style.position = "relative";
-  wrapper.style.cursor = "pointer";
-  wrapper.style.transition = "transform 0.2s ease";
-  wrapper.style.display = "flex";
-  wrapper.style.flexDirection = "column";
-  wrapper.style.alignItems = "center";
-  
-  // Pulsing animation ring
-  const pulseRing = document.createElement("div");
-  pulseRing.style.position = "absolute";
-  pulseRing.style.top = "8px";
-  pulseRing.style.left = "50%";
-  pulseRing.style.transform = "translate(-50%, 0)";
-  pulseRing.style.width = "40px";
-  pulseRing.style.height = "40px";
-  pulseRing.style.borderRadius = "50%";
-  pulseRing.style.backgroundColor = "rgba(14, 165, 233, 0.2)";
-  pulseRing.style.animation = "pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite";
-  wrapper.appendChild(pulseRing);
-
-  // Car icon container
-  const carContainer = document.createElement("div");
-  carContainer.style.position = "absolute";
-  carContainer.style.top = "8px";
-  carContainer.style.left = "50%";
-  carContainer.style.transform = "translate(-50%, 0)";
-  carContainer.style.width = "32px";
-  carContainer.style.height = "32px";
-  carContainer.style.backgroundColor = "#0ea5e9";
-  carContainer.style.borderRadius = "50%";
-  carContainer.style.border = "3px solid white";
-  carContainer.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 2px rgba(14, 165, 233, 0.2)";
-  carContainer.style.display = "flex";
-  carContainer.style.alignItems = "center";
-  carContainer.style.justifyContent = "center";
-  
-  // Car SVG icon
-  const carSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  carSvg.setAttribute("width", "18");
-  carSvg.setAttribute("height", "18");
-  carSvg.setAttribute("viewBox", "0 0 24 24");
-  carSvg.setAttribute("fill", "white");
-  
-  const carPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  carPath.setAttribute(
-    "d",
-    "M5 11l1.5-4.5h11L19 11m-1.5 5a1.5 1.5 0 01-3 0m-9 0a1.5 1.5 0 013 0m12 0h1.5m-16.5 0h-1.5m17-5H5m2.5-6h9L18 8H6l1.5-3z"
-  );
-  carSvg.appendChild(carPath);
-  carContainer.appendChild(carSvg);
-  wrapper.appendChild(carContainer);
-
-  // Driver label
-  const driverLabel = document.createElement("div");
-  driverLabel.style.position = "absolute";
-  driverLabel.style.top = "44px";
-  driverLabel.style.left = "50%";
-  driverLabel.style.transform = "translateX(-50%)";
-  driverLabel.style.backgroundColor = "#0ea5e9";
-  driverLabel.style.color = "white";
-  driverLabel.style.padding = "4px 10px";
-  driverLabel.style.borderRadius = "8px";
-  driverLabel.style.fontSize = "10px";
-  driverLabel.style.fontWeight = "800";
-  driverLabel.style.letterSpacing = "0.08em";
-  driverLabel.style.whiteSpace = "nowrap";
-  driverLabel.style.border = "2px solid white";
-  driverLabel.style.boxShadow = "0 3px 8px rgba(0, 0, 0, 0.4)";
-  driverLabel.textContent = "DRIVER";
-  wrapper.appendChild(driverLabel);
-
-  // ETA badge
-  const etaBadge = document.createElement("div");
-  etaBadge.style.position = "absolute";
-  etaBadge.style.top = "-2px";
-  etaBadge.style.right = "2px";
-  etaBadge.style.backgroundColor = "rgba(15, 23, 42, 0.95)";
-  etaBadge.style.color = "#22d3ee";
-  etaBadge.style.padding = "2px 6px";
-  etaBadge.style.borderRadius = "8px";
-  etaBadge.style.fontSize = "10px";
-  etaBadge.style.fontWeight = "700";
-  etaBadge.style.whiteSpace = "nowrap";
-  etaBadge.style.border = "1px solid rgba(34, 211, 238, 0.3)";
-  etaBadge.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.4)";
-  etaBadge.textContent = `${etaMinutes}m`;
-  wrapper.appendChild(etaBadge);
-
-  // Add CSS animation if not already added
-  if (!document.getElementById("map-marker-styles")) {
-    const style = document.createElement("style");
-    style.id = "map-marker-styles";
-    style.textContent = `
-      @keyframes pulse-ring {
-        0%, 100% {
-          transform: translate(-50%, -50%) scale(1);
-          opacity: 0.4;
-        }
-        50% {
-          transform: translate(-50%, -50%) scale(1.4);
-          opacity: 0;
-        }
-      }
-    `;
-    document.head.appendChild(style);
-  }
-
-  wrapper.onmouseenter = () => {
-    wrapper.style.transform = "scale(1.1)";
-    wrapper.style.zIndex = "1000";
-  };
-  wrapper.onmouseleave = () => {
-    wrapper.style.transform = "scale(1)";
-    wrapper.style.zIndex = "auto";
-  };
-
-  return wrapper;
-};
-
-const createPassengerMarkerElement = () => {
-  const wrapper = document.createElement("div");
-  wrapper.style.width = "48px";
-  wrapper.style.height = "56px";
-  wrapper.style.position = "relative";
-  wrapper.style.cursor = "pointer";
-  wrapper.style.display = "flex";
-  wrapper.style.flexDirection = "column";
-  wrapper.style.alignItems = "center";
-  
-  // Pin body
-  const pinBody = document.createElement("div");
-  pinBody.style.position = "absolute";
-  pinBody.style.top = "0";
-  pinBody.style.left = "50%";
-  pinBody.style.transform = "translateX(-50%)";
-  pinBody.style.width = "30px";
-  pinBody.style.height = "30px";
-  pinBody.style.backgroundColor = "#10b981";
-  pinBody.style.borderRadius = "50% 50% 50% 0";
-  pinBody.style.transform = "translateX(-50%) rotate(-45deg)";
-  pinBody.style.border = "3px solid white";
-  pinBody.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 2px rgba(16, 185, 129, 0.2)";
-  
-  // Pin center dot
-  const pinDot = document.createElement("div");
-  pinDot.style.position = "absolute";
-  pinDot.style.top = "50%";
-  pinDot.style.left = "50%";
-  pinDot.style.transform = "translate(-50%, -50%) rotate(45deg)";
-  pinDot.style.width = "10px";
-  pinDot.style.height = "10px";
-  pinDot.style.backgroundColor = "white";
-  pinDot.style.borderRadius = "50%";
-  pinBody.appendChild(pinDot);
-  wrapper.appendChild(pinBody);
-
-  // "YOU" Label
-  const youLabel = document.createElement("div");
-  youLabel.style.position = "absolute";
-  youLabel.style.top = "36px";
-  youLabel.style.left = "50%";
-  youLabel.style.transform = "translateX(-50%)";
-  youLabel.style.backgroundColor = "#10b981";
-  youLabel.style.color = "white";
-  youLabel.style.padding = "4px 12px";
-  youLabel.style.borderRadius = "10px";
-  youLabel.style.fontSize = "11px";
-  youLabel.style.fontWeight = "800";
-  youLabel.style.letterSpacing = "0.12em";
-  youLabel.style.whiteSpace = "nowrap";
-  youLabel.style.border = "2.5px solid white";
-  youLabel.style.boxShadow = "0 3px 8px rgba(0, 0, 0, 0.5)";
-  youLabel.textContent = "YOU";
-  wrapper.appendChild(youLabel);
-
-  // Shadow
-  const shadow = document.createElement("div");
-  shadow.style.position = "absolute";
-  shadow.style.bottom = "0";
-  shadow.style.left = "50%";
-  shadow.style.transform = "translateX(-50%)";
-  shadow.style.width = "16px";
-  shadow.style.height = "4px";
-  shadow.style.backgroundColor = "rgba(0, 0, 0, 0.25)";
-  shadow.style.borderRadius = "50%";
-  shadow.style.filter = "blur(2px)";
-  wrapper.appendChild(shadow);
-
-  return wrapper;
-};
-
-const createCircleGeoJSON = (
-  centre: { latitude: number; longitude: number },
-  radiusKm: number,
-  points = 64,
-) => {
-  const earthRadiusKm = 6371;
-  const coordinates: Array<[number, number]> = [];
-
-  for (let i = 0; i <= points; i += 1) {
-    const angle = (i * 2 * Math.PI) / points;
-    const dx = (radiusKm / earthRadiusKm) * Math.cos(angle);
-    const dy = (radiusKm / earthRadiusKm) * Math.sin(angle);
-    const latitude = centre.latitude + (dy * 180) / Math.PI;
-    const longitude =
-      centre.longitude + ((dx * 180) / Math.PI) / Math.cos((centre.latitude * Math.PI) / 180);
-    coordinates.push([longitude, latitude]);
-  }
-
-  return {
-    type: "FeatureCollection" as const,
-    features: [
-      {
-        type: "Feature" as const,
-        geometry: {
-          type: "Polygon" as const,
-          coordinates: [coordinates],
-        },
-        properties: {},
-      },
-    ],
-  };
-};
-
-export const PassengerMap = ({ 
-  summary, 
+export const PassengerMap = ({
+  summary,
   currentLocation,
   useRealLocation = false,
   onToggleRealLocation,
   locationError,
+  activeTripLocation,
 }: PassengerMapProps) => {
   const driverLocations = summary.driverAvailability.drivers;
-  
+
   // Determine which location to use: real-time GPS or saved location
   const passengerLocation = useMemo(() => {
     if (useRealLocation && currentLocation) {
@@ -276,11 +61,11 @@ export const PassengerMap = ({
         longitude: currentLocation.longitude,
       };
     }
-    return summary.passenger.defaultLocation?.location ?? 
-           driverLocations[0]?.location ?? 
-           null;
+    return summary.passenger.defaultLocation?.location ??
+      driverLocations[0]?.location ??
+      null;
   }, [useRealLocation, currentLocation, summary.passenger.defaultLocation, driverLocations]);
-  
+
   const radiusKm = summary.driverAvailability.radiusKm;
   const isUsingRealLocation = useRealLocation && currentLocation && passengerLocation;
 
@@ -309,6 +94,7 @@ export const PassengerMap = ({
   const mapRef = useRef<import("maplibre-gl").Map | null>(null);
   const markersRef = useRef<Array<{ id: string; marker: import("maplibre-gl").Marker }>>([]);
   const maplibreRef = useRef<MapLibreModule | null>(null);
+  const activeTripMarkerRef = useRef<import("maplibre-gl").Marker | null>(null);
 
   const [mapError, setMapError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -366,6 +152,15 @@ export const PassengerMap = ({
             return;
           }
           setIsReady(true);
+
+          map.on("click", (e) => {
+            if (onMapClick) {
+              onMapClick({ latitude: e.lngLat.lat, longitude: e.lngLat.lng });
+            }
+          });
+
+          // Change cursor to pointer to indicate interactivity
+          map.getCanvas().style.cursor = onMapClick ? "crosshair" : "grab";
 
           if (!map.getSource(RADIUS_SOURCE_ID)) {
             map.addSource(RADIUS_SOURCE_ID, {
@@ -694,7 +489,7 @@ export const PassengerMap = ({
 
     const heatmapLayer = map.getLayer(HEATMAP_LAYER_ID);
     const pointLayer = map.getLayer(HEATMAP_POINT_LAYER_ID);
-    
+
     if (heatmapLayer) {
       map.setLayoutProperty(
         HEATMAP_LAYER_ID,
@@ -702,7 +497,7 @@ export const PassengerMap = ({
         showHeatmap ? "visible" : "none"
       );
     }
-    
+
     if (pointLayer) {
       map.setLayoutProperty(
         HEATMAP_POINT_LAYER_ID,
@@ -711,6 +506,66 @@ export const PassengerMap = ({
       );
     }
   }, [showHeatmap, isReady]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const maplibregl = maplibreRef.current;
+    if (!map || !maplibregl || !isReady) {
+      return;
+    }
+
+    if (!activeTripLocation) {
+      if (activeTripMarkerRef.current) {
+        activeTripMarkerRef.current.remove();
+        activeTripMarkerRef.current = null;
+      }
+      return;
+    }
+
+    const lngLat: [number, number] = [
+      activeTripLocation.longitude,
+      activeTripLocation.latitude,
+    ];
+
+    if (!activeTripMarkerRef.current) {
+      const el = document.createElement("div");
+      el.style.position = "relative";
+      el.style.width = "20px";
+      el.style.height = "20px";
+
+      const core = document.createElement("div");
+      core.style.width = "20px";
+      core.style.height = "20px";
+      core.style.borderRadius = "50%";
+      core.style.background = "linear-gradient(135deg,#facc15,#fb923c)";
+      core.style.boxShadow = "0 0 20px rgba(250,204,21,0.8)";
+      el.appendChild(core);
+
+      const halo = document.createElement("div");
+      halo.style.position = "absolute";
+      halo.style.top = "-6px";
+      halo.style.left = "-6px";
+      halo.style.width = "32px";
+      halo.style.height = "32px";
+      halo.style.borderRadius = "50%";
+      halo.style.border = "2px solid rgba(250,204,21,0.4)";
+      halo.style.animation = "pulse-ring 1.6s ease-out infinite";
+      el.appendChild(halo);
+
+      activeTripMarkerRef.current = new maplibregl.Marker({
+        element: el,
+        anchor: "center",
+      })
+        .setLngLat(lngLat)
+        .addTo(map);
+    } else {
+      activeTripMarkerRef.current.setLngLat(lngLat);
+    }
+
+    if (!map.getBounds().contains(lngLat)) {
+      map.easeTo({ center: lngLat, duration: 800 });
+    }
+  }, [activeTripLocation, isReady]);
 
   if (!passengerLocation) {
     return <StylisedFallbackMap />;
@@ -746,7 +601,7 @@ export const PassengerMap = ({
           </p>
           <p className="text-[11px] text-slate-400">Live updated</p>
         </div>
-        
+
         {/* Location Status Indicator */}
         <div className="rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2 text-xs text-slate-200 shadow-lg shadow-slate-900/50">
           <div className="flex items-center gap-2">
@@ -755,11 +610,11 @@ export const PassengerMap = ({
               {isUsingRealLocation ? 'Live GPS' : 'Saved Loc'}
             </p>
           </div>
-          {isUsingRealLocation && currentLocation?.accuracy && (
+          {isUsingRealLocation && (currentLocation?.accuracy || 20) ? (
             <p className="text-[11px] text-slate-400 mt-1">
-              Accuracy: ±{Math.round(currentLocation.accuracy)}m
+              Accuracy: ±{Math.round(currentLocation?.accuracy || 20)}m
             </p>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -769,19 +624,18 @@ export const PassengerMap = ({
         {onToggleRealLocation && (
           <button
             onClick={onToggleRealLocation}
-            className={`pointer-events-auto group flex items-center gap-2 rounded-2xl border px-4 py-2 text-xs shadow-lg shadow-slate-900/50 transition-all ${
-              useRealLocation
-                ? 'border-green-500/50 bg-green-950/70 text-green-200 hover:bg-green-900/80'
-                : 'border-white/10 bg-slate-950/70 text-slate-200 hover:bg-slate-900/80 hover:border-sky-500/50'
-            }`}
+            className={`pointer-events-auto group flex items-center gap-2 rounded-2xl border px-4 py-2 text-xs shadow-lg shadow-slate-900/50 transition-all ${useRealLocation
+              ? 'border-green-500/50 bg-green-950/70 text-green-200 hover:bg-green-900/80'
+              : 'border-white/10 bg-slate-950/70 text-slate-200 hover:bg-slate-900/80 hover:border-sky-500/50'
+              }`}
             title={useRealLocation ? "Using live GPS location" : "Click to use your real-time location"}
           >
             <div className="relative h-5 w-5 flex items-center justify-center">
-              <svg 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                strokeWidth="2" 
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
                 className="w-5 h-5"
               >
                 <circle cx="12" cy="12" r="3" />
@@ -797,7 +651,7 @@ export const PassengerMap = ({
             </span>
           </button>
         )}
-        
+
         {/* Heatmap Toggle Button */}
         <button
           onClick={() => setShowHeatmap(!showHeatmap)}
@@ -807,22 +661,22 @@ export const PassengerMap = ({
           <div className="relative h-5 w-5 flex items-center justify-center">
             {showHeatmap ? (
               // Icon for markers view
-              <svg 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                strokeWidth="2" 
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
                 className="w-5 h-5"
               >
-                <path d="M5 11l1.5-4.5h11L19 11m-1.5 5a1.5 1.5 0 01-3 0m-9 0a1.5 1.5 0 013 0m12 0h1.5m-16.5 0h-1.5m17-5H5m2.5-6h9L18 8H6l1.5-3z"/>
+                <path d="M5 11l1.5-4.5h11L19 11m-1.5 5a1.5 1.5 0 01-3 0m-9 0a1.5 1.5 0 013 0m12 0h1.5m-16.5 0h-1.5m17-5H5m2.5-6h9L18 8H6l1.5-3z" />
               </svg>
             ) : (
               // Icon for heatmap view
-              <svg 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                strokeWidth="2" 
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
                 className="w-5 h-5"
               >
                 <circle cx="12" cy="12" r="3" fill="currentColor" opacity="0.8" />
@@ -859,11 +713,10 @@ export const PassengerMap = ({
 
       {/* Coordinates Display with Source Info */}
       {passengerLocation?.latitude != null && passengerLocation?.longitude != null && (
-        <div className={`pointer-events-none absolute bottom-4 left-4 rounded-lg border px-3 py-2 text-[10px] shadow-lg ${
-          isUsingRealLocation 
-            ? 'border-green-500/30 bg-green-950/90 text-green-200'
-            : 'border-yellow-500/30 bg-slate-950/90 text-yellow-200'
-        }`}>
+        <div className={`pointer-events-none absolute bottom-4 left-4 rounded-lg border px-3 py-2 text-[10px] shadow-lg ${isUsingRealLocation
+          ? 'border-green-500/30 bg-green-950/90 text-green-200'
+          : 'border-yellow-500/30 bg-slate-950/90 text-yellow-200'
+          }`}>
           <p className="text-[9px] text-slate-400 mb-1">
             {isUsingRealLocation ? '📍 Live GPS Location' : '📌 Saved Location'}
           </p>
@@ -875,7 +728,7 @@ export const PassengerMap = ({
           </p>
         </div>
       )}
-      
+
       {/* Location Error Display */}
       {locationError && !isUsingRealLocation && (
         <div className="pointer-events-none absolute bottom-20 left-4 right-4 max-w-sm rounded-lg border border-red-500/30 bg-red-950/90 px-3 py-2 text-xs text-red-200 shadow-lg">

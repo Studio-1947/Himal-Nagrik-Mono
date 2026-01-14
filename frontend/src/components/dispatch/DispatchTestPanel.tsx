@@ -5,11 +5,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
+import { ActiveRideDisplay } from "@/components/driver/ActiveRideDisplay";
 import {
   dispatchService,
   type DispatchOffer,
   type DriverAvailability,
 } from "@/lib/dispatch-service";
+import { tripService } from "@/lib/trip-service";
+import { bookingService, type BookingResponse } from "@/lib/booking-service";
 
 type DispatchTestPanelProps = {
   token: string;
@@ -62,6 +65,9 @@ export const DispatchTestPanel = ({
   const [lastOffersRefresh, setLastOffersRefresh] = useState<string | null>(
     null,
   );
+  const [activeBooking, setActiveBooking] = useState<BookingResponse | null>(null);
+  const [isAdvancingTrip, setIsAdvancingTrip] = useState(false);
+  const [isCompletingTrip, setIsCompletingTrip] = useState(false);
 
   const [isSendingHeartbeat, setIsSendingHeartbeat] = useState(false);
   const [isRefreshingOffers, setIsRefreshingOffers] = useState(false);
@@ -178,6 +184,7 @@ export const DispatchTestPanel = ({
         title: "Offer accepted",
         description: `Booking ${booking.id} marked ${booking.status}.`,
       });
+      setActiveBooking(booking);
       await refreshOffers();
     } catch (error) {
       const message =
@@ -213,6 +220,88 @@ export const DispatchTestPanel = ({
       setRejectingOfferId(null);
     }
   };
+
+  const loadActiveTrip = useCallback(async () => {
+    try {
+      const trip = await tripService.getCurrentTrip(token);
+      if (trip) {
+        const booking = await bookingService.get(token, trip.rideId);
+        setActiveBooking(booking);
+      } else {
+        setActiveBooking(null);
+      }
+    } catch (error) {
+      console.error("Failed to load active trip", error);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    void loadActiveTrip();
+  }, [loadActiveTrip]);
+
+  const advanceTripStatus = useCallback(async () => {
+    if (!activeBooking) return;
+    try {
+      setIsAdvancingTrip(true);
+      const trip = await tripService.startTrip(token, { rideId: activeBooking.id });
+      setActiveBooking((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: trip.status as BookingResponse["status"],
+              lastUpdatedAt: new Date().toISOString(),
+            }
+          : prev,
+      );
+      toast({
+        title:
+          trip.status === "passenger_onboard"
+            ? "Passenger onboard"
+            : "Heading to pickup",
+        description:
+          trip.status === "passenger_onboard"
+            ? "Drive safely to the destination."
+            : "Navigate to the pickup point.",
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to update trip status.";
+      toast({
+        variant: "destructive",
+        title: "Trip update failed",
+        description: message,
+      });
+    } finally {
+      setIsAdvancingTrip(false);
+    }
+  }, [activeBooking, token]);
+
+  const completeTrip = useCallback(async () => {
+    if (!activeBooking) return;
+    try {
+      setIsCompletingTrip(true);
+      const trip = await tripService.completeTrip(token, activeBooking.id, {});
+      toast({
+        title: "Trip completed",
+        description: trip.actualFare
+          ? `Collect Rs ${trip.actualFare} from passenger.`
+          : "Great job! Ready for the next ride.",
+      });
+      setActiveBooking(null);
+      await refreshOffers();
+      await loadActiveTrip();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to complete trip.";
+      toast({
+        variant: "destructive",
+        title: "Trip completion failed",
+        description: message,
+      });
+    } finally {
+      setIsCompletingTrip(false);
+    }
+  }, [activeBooking, token, refreshOffers, loadActiveTrip]);
 
   const heartbeatSummary = useMemo(() => {
     if (!availability) {
@@ -351,78 +440,146 @@ export const DispatchTestPanel = ({
             <p className="mt-1 text-xs text-slate-400">{offersRefreshedAtLabel}</p>
           ) : null}
 
+          {activeBooking && (
+            <div className="mt-6 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
+                    Active Trip
+                  </p>
+                  <p className="text-sm text-slate-300">
+                    Booking {activeBooking.id.slice(0, 8)}
+                  </p>
+                </div>
+                <Badge className="bg-emerald-500/15 text-emerald-200">
+                  {activeBooking.status.replace(/_/g, " ")}
+                </Badge>
+              </div>
+              <ActiveRideDisplay
+                booking={activeBooking}
+                onStartTrip={advanceTripStatus}
+                onCompleteTrip={completeTrip}
+                isAdvancingTrip={isAdvancingTrip}
+                isCompletingTrip={isCompletingTrip}
+              />
+            </div>
+          )}
+
           <div className="mt-4 space-y-3">
             {offers.length === 0 ? (
               <div className="rounded-xl border border-dashed border-white/10 p-4 text-sm text-slate-300">
                 No active offers. Keep the heartbeat running to receive rides.
               </div>
             ) : (
-              offers.map((offer) => (
-                <div
-                  key={offer.id}
-                  className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-slate-200"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-semibold text-white">
-                        Booking {offer.bookingId.slice(0, 8)}
-                      </p>
-                      <p className="text-xs text-slate-400">
-                        Received {new Date(offer.createdAt).toLocaleTimeString()}
-                      </p>
+              offers.map((offer) => {
+                const pickupDescription =
+                  offer.pickup.description ??
+                  `${offer.pickup.latitude.toFixed(4)}, ${offer.pickup.longitude.toFixed(4)}`;
+                const dropoffDescription =
+                  offer.dropoff.description ??
+                  `${offer.dropoff.latitude.toFixed(4)}, ${offer.dropoff.longitude.toFixed(4)}`;
+                const passengerName =
+                  offer.passenger?.name ?? `Passenger ${offer.passengerId.slice(0, 6)}`;
+
+                return (
+                  <div
+                    key={offer.id}
+                    className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-slate-200 space-y-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-white flex items-center gap-2">
+                          Booking {offer.bookingId.slice(0, 8)}
+                          {offer.fareQuote ? (
+                            <span className="text-xs font-normal text-emerald-300">
+                              ₹{offer.fareQuote.amount} est.
+                            </span>
+                          ) : null}
+                        </p>
+                        <p className="text-xs text-slate-400">
+                          Received {new Date(offer.createdAt).toLocaleTimeString()}
+                        </p>
+                      </div>
+                      <Badge className={getOfferStatusStyle(offer.status)}>
+                        {offer.status}
+                      </Badge>
                     </div>
-                    <Badge className={getOfferStatusStyle(offer.status)}>
-                      {offer.status}
-                    </Badge>
+
+                    <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-1">
+                      <p className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
+                        Passenger
+                      </p>
+                      <p className="font-medium text-white">{passengerName}</p>
+                      {offer.passenger?.phone ? (
+                        <p className="text-xs text-slate-400">Phone: {offer.passenger.phone}</p>
+                      ) : null}
+                    </div>
+
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
+                        <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-300">
+                          Pickup
+                        </p>
+                        <p className="text-sm text-white">{pickupDescription}</p>
+                      </div>
+                      <div className="rounded-lg border border-sky-500/20 bg-sky-500/5 p-3">
+                        <p className="text-[11px] uppercase tracking-[0.2em] text-sky-300">
+                          Dropoff
+                        </p>
+                        <p className="text-sm text-white">{dropoffDescription}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="bg-emerald-500/20 text-emerald-100 hover:bg-emerald-500/30"
+                        onClick={() => handleAcceptOffer(offer.id)}
+                        disabled={
+                          offer.status !== "pending" ||
+                          acceptingOfferId === offer.id ||
+                          rejectingOfferId === offer.id
+                        }
+                      >
+                        {acceptingOfferId === offer.id ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Accepting...
+                          </>
+                        ) : (
+                          "Accept"
+                        )}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="border-red-400/40 text-red-200 hover:bg-red-500/15"
+                        onClick={() => handleRejectOffer(offer.id)}
+                        disabled={
+                          offer.status !== "pending" ||
+                          rejectingOfferId === offer.id ||
+                          acceptingOfferId === offer.id
+                        }
+                      >
+                        {rejectingOfferId === offer.id ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Rejecting...
+                          </>
+                        ) : (
+                          "Reject"
+                        )}
+                      </Button>
+                    </div>
+
+                    <p className="text-xs text-slate-400">
+                      Passenger ID {offer.passengerId.slice(0, 8)}
+                    </p>
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="bg-emerald-500/20 text-emerald-100 hover:bg-emerald-500/30"
-                      onClick={() => handleAcceptOffer(offer.id)}
-                      disabled={
-                        offer.status !== "pending" ||
-                        acceptingOfferId === offer.id ||
-                        rejectingOfferId === offer.id
-                      }
-                    >
-                      {acceptingOfferId === offer.id ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Accepting...
-                        </>
-                      ) : (
-                        "Accept"
-                      )}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="border-red-400/40 text-red-200 hover:bg-red-500/15"
-                      onClick={() => handleRejectOffer(offer.id)}
-                      disabled={
-                        offer.status !== "pending" ||
-                        rejectingOfferId === offer.id ||
-                        acceptingOfferId === offer.id
-                      }
-                    >
-                      {rejectingOfferId === offer.id ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Rejecting...
-                        </>
-                      ) : (
-                        "Reject"
-                      )}
-                    </Button>
-                  </div>
-                  <p className="mt-2 text-xs text-slate-400">
-                    Passenger ID {offer.passengerId.slice(0, 8)}
-                  </p>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>

@@ -52,7 +52,7 @@ const authenticate = async (
   try {
     const { user } = await authService.authenticate(token);
     (req as AuthenticatedRequest).token = token;
-    (req as AuthenticatedRequest).user = user;
+    (req as unknown as AuthenticatedRequest).user = user;
     next();
   } catch (error) {
     if (!handleErrorResponse(error, res)) {
@@ -70,7 +70,7 @@ router.post(
   },
   async (req, res, next) => {
     try {
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       const payload = createRatingSchema.parse(req.body) as CreateRatingInput;
       const rating = await ratingService.createRating(user, payload);
       res.status(201).json(rating);
@@ -90,7 +90,7 @@ router.get(
   },
   async (req, res, next) => {
     try {
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       const params = ratingIdSchema.parse(req.params);
       const rating = await ratingService.getRating(params.id, user);
       res.json(rating);
@@ -110,7 +110,7 @@ router.get(
   },
   async (req, res, next) => {
     try {
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       const userId = req.params.userId;
       const limit = req.query.limit
         ? Math.min(Math.max(parseInt(req.query.limit as string, 10), 1), 100)
@@ -133,7 +133,7 @@ router.get(
   },
   async (req, res, next) => {
     try {
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       const limit = req.query.limit
         ? Math.min(Math.max(parseInt(req.query.limit as string, 10), 1), 100)
         : 20;
@@ -174,7 +174,7 @@ router.put(
   },
   async (req, res, next) => {
     try {
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       const params = ratingIdSchema.parse(req.params);
       const updates = createRatingSchema.partial().parse(req.body);
       const rating = await ratingService.updateRating(params.id, user, updates);
@@ -195,7 +195,7 @@ router.delete(
   },
   async (req, res, next) => {
     try {
-      const { user } = req as AuthenticatedRequest;
+      const { user } = req as unknown as AuthenticatedRequest;
       const params = ratingIdSchema.parse(req.params);
       await ratingService.deleteRating(params.id, user);
       res.status(204).send();
@@ -208,6 +208,10 @@ router.delete(
 );
 
 export const ratingRouter = router;
+
+
+
+
 
 
 

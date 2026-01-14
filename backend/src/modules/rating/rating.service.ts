@@ -68,7 +68,7 @@ export const ratingService = {
       rideId: input.rideId,
       raterId: user.id,
       rateeId,
-      raterRole: user.role,
+      raterRole: user.role as 'passenger' | 'driver',
       score: input.score,
       review: input.review,
       isAnonymous: input.isAnonymous,
@@ -76,7 +76,7 @@ export const ratingService = {
 
     // Update the rated user's stats
     const summary = await ratingRepository.getUserRatingSummary(rateeId);
-    
+
     // Broadcast rating event
     publishRealtimeEvent(`user:${rateeId}`, 'rating.received', {
       ratingId: rating.id,
@@ -183,6 +183,10 @@ export const ratingService = {
 };
 
 export { RatingError };
+
+
+
+
 
 
 

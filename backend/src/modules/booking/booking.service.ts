@@ -66,6 +66,17 @@ export const bookingService = {
     payload: CreateBookingInput,
   ): Promise<BookingResponse> {
     const passenger = ensurePassengerUser(user);
+
+    const existingActive = await bookingRepository.getActiveBookingForPassenger(
+      passenger.id,
+    );
+    if (existingActive) {
+      throw new BookingError(
+        "You already have an active trip. Please complete or cancel it before requesting another ride.",
+        409,
+      );
+    }
+
     const fareQuote = await computeFareQuote(payload);
     const record = await bookingRepository.createBooking(
       passenger.id,

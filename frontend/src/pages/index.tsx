@@ -2,9 +2,9 @@
 import { useNavigate } from "react-router-dom";
 import { RouteSelector } from "@/components/RouteSelector";
 import { TaxiAvailability } from "@/components/TaxiAvailability";
-import { BookingConfirmation } from "@/components/BookingConfirmation";
-import type { BookingData } from "@/components/BookingConfirmation";
 import { BookingSuccess } from "@/components/BookingSuccess";
+import type { BookingData } from "@/components/BookingConfirmation";
+import { ActiveRide } from "@/components/ActiveRide";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 // import { Card, CardContent } from "@/components/ui/card";
@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { MapPin, Car, Users, Star, ArrowLeft } from "lucide-react";
 import heroTaxiImage from "@/assets/hero-taxi.jpg";
 
-type Step = "route" | "availability" | "booking" | "success";
+type Step = "route" | "availability" | "booking" | "success" | "active";
 
 interface Route {
   from: string;
@@ -210,6 +210,14 @@ const Index = () => {
           <BookingSuccess
             bookingData={bookingData}
             onNewBooking={handleNewBooking}
+            onTrackRide={() => setCurrentStep("active")}
+          />
+        )}
+
+        {currentStep === "active" && bookingData && (
+          <ActiveRide
+            bookingData={bookingData}
+            onComplete={handleNewBooking}
           />
         )}
       </div>

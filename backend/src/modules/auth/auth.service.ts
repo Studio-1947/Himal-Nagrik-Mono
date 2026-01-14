@@ -69,10 +69,10 @@ const asQueryClient = (tx: unknown): typeof database.db => tx as typeof database
 const isUniqueConstraintError = (error: unknown): boolean =>
   Boolean(
     error &&
-      typeof error === 'object' &&
-      'code' in error &&
-      typeof (error as { code?: unknown }).code === 'string' &&
-      (error as { code: string }).code === '23505',
+    typeof error === 'object' &&
+    'code' in error &&
+    typeof (error as { code?: unknown }).code === 'string' &&
+    (error as { code: string }).code === '23505',
   );
 
 const issueToken = (user: DbUser): { token: string; expiresAt?: string } => {
@@ -94,7 +94,7 @@ const issueToken = (user: DbUser): { token: string; expiresAt?: string } => {
 
 const mapUserToProfile = (user: DbUser): AuthProfile => {
   if (user.role === 'passenger') {
-  const preferences = (user.preferences as PassengerPreferences | null) ?? {};
+    const preferences = (user.preferences as PassengerPreferences | null) ?? {};
     const emergencyContact = user.emergencyContact as PassengerProfile['emergencyContact'];
     const recentTrips = Array.isArray(user.recentTrips)
       ? (user.recentTrips as PassengerRecentTrip[])
@@ -119,6 +119,19 @@ const mapUserToProfile = (user: DbUser): AuthProfile => {
           : [],
       },
       recentTrips,
+    };
+  }
+
+  if (user.role === 'admin') {
+    return {
+      id: user.id,
+      role: 'admin',
+      name: user.name,
+      email: user.email,
+      phone: user.phone ?? undefined,
+      avatarUrl: undefined,
+      location: undefined,
+      bio: undefined,
     };
   }
 
@@ -221,6 +234,21 @@ const createDriverUserPayload = (payload: DriverRegisterInput) => {
   };
 };
 
+const createAdminUserPayload = (payload: any) => {
+  return {
+    emergencyContact: null,
+    preferences: null,
+    vehicle: null,
+    availability: null,
+    stats: null,
+    recentTrips: null,
+    licenseNumber: null,
+    yearsOfExperience: null,
+  };
+};
+
+
+
 const hashPassword = (password: string) => bcrypt.hash(password, SALT_ROUNDS);
 
 export const authService = {
@@ -256,12 +284,17 @@ export const authService = {
       const insertValues =
         payload.role === 'passenger'
           ? {
-              ...baseUser,
-              ...createPassengerUserPayload(payload as PassengerRegisterInput),
-            }
-          : {
+            ...baseUser,
+            ...createPassengerUserPayload(payload as PassengerRegisterInput),
+          }
+          : payload.role === 'driver'
+            ? {
               ...baseUser,
               ...createDriverUserPayload(payload as DriverRegisterInput),
+            }
+            : {
+              ...baseUser,
+              ...createAdminUserPayload(payload),
             };
 
       try {

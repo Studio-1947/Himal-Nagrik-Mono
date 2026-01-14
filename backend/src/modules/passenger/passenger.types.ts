@@ -45,6 +45,13 @@ export type PassengerDashboardSummary = {
   };
   driverAvailability: DriverAvailabilitySummary & { radiusKm: number };
   activeBooking: BookingResponse | null;
+  activeTripLocation: {
+    latitude: number;
+    longitude: number;
+    heading?: number;
+    speed?: number;
+    timestamp?: string;
+  } | null;
   recentTrips: BookingResponse[];
   savedLocations: PassengerSavedLocation[];
 };

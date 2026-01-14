@@ -42,7 +42,7 @@ export const mapBookingRecordToResponse = (
   const scheduledAtIso =
     record.scheduledAt instanceof Date
       ? record.scheduledAt.toISOString()
-      : record.scheduledAt ?? null;
+      : (record.scheduledAt as string | null) ?? null;
 
   return {
     id: record.id,
@@ -54,9 +54,9 @@ export const mapBookingRecordToResponse = (
     driver:
       record.driverId !== null
         ? {
-            id: record.driverId,
-            name: "",
-          }
+          id: record.driverId,
+          name: "",
+        }
         : null,
     scheduledAt: scheduledAtIso,
     requestedAt: requestedAtIso,

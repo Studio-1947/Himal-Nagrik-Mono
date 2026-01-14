@@ -7,6 +7,8 @@ type ActiveRideDisplayProps = {
   onStartTrip?: () => void;
   onCompleteTrip?: () => void;
   onNavigate?: () => void;
+  isAdvancingTrip?: boolean;
+  isCompletingTrip?: boolean;
 };
 
 export const ActiveRideDisplay = ({
@@ -14,6 +16,8 @@ export const ActiveRideDisplay = ({
   onStartTrip,
   onCompleteTrip,
   onNavigate,
+  isAdvancingTrip = false,
+  isCompletingTrip = false,
 }: ActiveRideDisplayProps) => {
   if (!booking) return null;
 
@@ -52,6 +56,10 @@ export const ActiveRideDisplay = ({
 
   const statusInfo = getStatusDisplay(booking.status);
   const passenger = booking.passenger;
+  const canAdvanceTrip =
+    booking.status === 'driver_assigned' || booking.status === 'enroute_pickup';
+  const advanceButtonLabel =
+    booking.status === 'enroute_pickup' ? 'Passenger Onboard' : 'Start Trip';
 
   const handleNavigate = () => {
     if (onNavigate) {
@@ -190,23 +198,25 @@ export const ActiveRideDisplay = ({
             Navigate
           </Button>
           
-          {booking.status === 'driver_assigned' && onStartTrip && (
+          {canAdvanceTrip && onStartTrip && (
             <Button
               onClick={onStartTrip}
-              className="flex-1 bg-gradient-to-r from-emerald-500 to-sky-500 hover:from-emerald-600 hover:to-sky-600"
+              disabled={isAdvancingTrip}
+              className="flex-1 bg-gradient-to-r from-emerald-500 to-sky-500 hover:from-emerald-600 hover:to-sky-600 disabled:opacity-70"
             >
               <CheckCircle className="h-4 w-4 mr-2" />
-              Start Trip
+              {isAdvancingTrip ? 'Updating...' : advanceButtonLabel}
             </Button>
           )}
           
           {booking.status === 'passenger_onboard' && onCompleteTrip && (
             <Button
               onClick={onCompleteTrip}
-              className="flex-1 bg-gradient-to-r from-emerald-500 to-sky-500 hover:from-emerald-600 hover:to-sky-600"
+              disabled={isCompletingTrip}
+              className="flex-1 bg-gradient-to-r from-emerald-500 to-sky-500 hover:from-emerald-600 hover:to-sky-600 disabled:opacity-70"
             >
               <CheckCircle className="h-4 w-4 mr-2" />
-              Complete Trip
+              {isCompletingTrip ? 'Finishing...' : 'Complete Trip'}
             </Button>
           )}
         </div>

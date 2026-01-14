@@ -66,7 +66,7 @@ export const passengerRepository = {
         ),
       );
 
-    return rowCount > 0;
+    return (rowCount ?? 0) > 0;
   },
 
   async clearDefaultSavedLocations(passengerId: string): Promise<void> {

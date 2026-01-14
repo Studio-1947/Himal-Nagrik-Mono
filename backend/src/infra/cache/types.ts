@@ -1,8 +1,9 @@
 export type RedisClientType = {
-  disconnect: () => Promise<void> | void;
-  quit: () => Promise<void> | void;
+  disconnect: () => void;
+  quit: () => Promise<string> | void;
   lPush: (key: string, value: string) => Promise<number>;
   rPop: (key: string) => Promise<string | null>;
+  lRange: (key: string, start: number, stop: number) => Promise<string[]>;
   zAdd: (key: string, members: Array<{ score: number; value: string }>) => Promise<number>;
   zPopMin: (key: string) => Promise<Array<{ value: string; score: number }>>;
   zRem: (key: string, member: string) => Promise<number>;
@@ -13,4 +14,9 @@ export type RedisClientType = {
   expire: (key: string, seconds: number) => Promise<number>;
   del: (...keys: string[]) => Promise<number>;
   keys: (pattern: string) => Promise<string[]>;
+  get: (key: string) => Promise<string | null>;
+  set: (key: string, value: string, options?: { EX?: number }) => Promise<string>;
+  sAdd: (key: string, ...members: string[]) => Promise<number>;
+  sRem: (key: string, ...members: string[]) => Promise<number>;
+  lTrim: (key: string, start: number, stop: number) => Promise<string>;
 };
